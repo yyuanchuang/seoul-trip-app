@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>首爾行程表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --paper:#F3EEE4;
+    --card:#FFFFFF;
+    --ink:#1C1B1A;
+    --ink-soft:#6B6560;
+    --line:#E4DDCF;
+
+    --coffee:#00A650;
+    --food:#FF7E00;
+    --shop:#00A5DE;
+    --sight:#0052A4;
+    --med:#A0498B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:70px;
+  }
+
+  nav.topnav{
+    display:flex; gap:0; background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  nav.topnav a{
+    flex:1; text-align:center; padding:13px 0; font-size:13px; font-weight:700;
+    text-decoration:none; color:var(--ink-soft); border-bottom:2px solid transparent;
+  }
+  nav.topnav a.active{ color:var(--ink); border-bottom-color:var(--ink); }
+
+  header{
+    padding:20px 20px 16px;
+    background:var(--paper);
+  }
+  header .eyebrow{
+    font-size:12px; letter-spacing:0.14em; color:var(--ink-soft); font-weight:700; text-transform:uppercase;
+  }
+  header h1{
+    font-family:'Noto Serif TC', serif; font-weight:900; font-size:24px; margin:4px 0 2px;
+  }
+
+  .daytabs{
+    display:flex; gap:6px; padding:0 16px 16px; overflow-x:auto;
+  }
+  .daytab{
+    flex:none; padding:10px 16px; border-radius:12px; border:1px solid var(--line);
+    background:var(--card); font-size:13px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+    white-space:nowrap;
+  }
+  .daytab .d{ display:block; font-size:11px; font-weight:400; }
+  .daytab.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+
+  .list{ padding:4px 16px 100px; display:flex; flex-direction:column; gap:10px; }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:13px;
+  }
+
+  .item{
+    background:var(--card); border-radius:16px; padding:14px 14px 14px 0;
+    display:flex; align-items:stretch; gap:10px; border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(28,27,26,0.04);
+  }
+  .item .stripe{ width:4px; border-radius:4px; flex:none; }
+  .item .reorder{
+    display:flex; flex-direction:column; justify-content:center; gap:4px; flex:none;
+  }
+  .item .reorder button{
+    width:26px; height:22px; border-radius:6px; border:1px solid var(--line); background:var(--paper);
+    color:var(--ink-soft); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .item .reorder button:disabled{ opacity:0.3; }
+  .item-body{ flex:1; min-width:0; }
+  .item-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .item-body .name{ font-weight:700; font-size:15px; margin:0 0 4px; }
+  .item-meta{ display:flex; flex-wrap:wrap; gap:6px; font-size:11.5px; color:var(--ink-soft); margin-bottom:8px; }
+  .item-meta span{ display:inline-flex; align-items:center; gap:3px; }
+  .item-actions{ display:flex; gap:8px; }
+  .item-actions button, .item-actions a{
+    font-size:12px; font-weight:700; padding:6px 10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--paper); color:var(--ink); text-decoration:none; cursor:pointer;
+  }
+  .item-actions .danger{ color:#C0392B; border-color:#EAD3CF; background:#FBF2F0; }
+
+  .fab{
+    position:fixed; right:20px; bottom:24px; z-index:150;
+    width:56px; height:56px; border-radius:999px; border:none;
+    background:var(--ink); color:#fff; font-size:28px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(28,27,26,0.3); cursor:pointer;
+  }
+
+  .detail-overlay{
+    position:fixed; inset:0; background:rgba(28,27,26,0.6);
+    display:flex; align-items:flex-end; justify-content:center; z-index:200;
+  }
+  .detail-sheet{
+    background:var(--paper); border-radius:20px 20px 0 0;
+    max-width:480px; width:100%; max-height:85vh; overflow-y:auto;
+    padding:0 0 24px;
+  }
+  .detail-top{ height:6px; border-radius:20px 20px 0 0; }
+  .detail-head{
+    padding:20px 20px 12px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  }
+  .detail-head h2{ font-family:'Noto Serif TC', serif; font-size:19px; font-weight:900; margin:0; }
+  .detail-close{
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    width:30px; height:30px; flex:none; font-size:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:var(--ink-soft);
+  }
+  .detail-body{ padding:0 20px; }
+
+  .cat-group{ margin-bottom:18px; }
+  .cat-group h3{
+    font-family:'Noto Serif TC', serif; font-size:14px; margin:0 0 8px; display:flex; align-items:center; gap:8px;
+  }
+  .cat-dot{ width:10px; height:10px; border-radius:999px; flex:none; }
+  .pick-item{
+    padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:var(--card);
+    margin-bottom:6px; cursor:pointer; font-size:13px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .pick-item small{ color:var(--ink-soft); font-weight:400; }
+  .pick-item.added{ opacity:0.4; pointer-events:none; }
+
+  .form-group{ margin-bottom:14px; }
+  .form-group label{ display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; }
+  .form-group input, .form-group textarea{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:14px; font-family:'Noto Sans TC', sans-serif; box-sizing:border-box; background:#fff; color:var(--ink);
+  }
+  .form-submit{
+    width:100%; padding:12px; border-radius:12px; border:none;
+    background:var(--ink); color:#fff; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+
+  .loading{ text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:13px; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html">投票</a>
+  <a href="itinerary.html" class="active">行程</a>
+</nav>
+
+<header>
+  <div class="eyebrow">2026.10.21 – 10.25</div>
+  <h1>首爾行程表</h1>
+</header>
+
+<div class="daytabs" id="dayTabs"></div>
+<div class="list" id="list"><div class="loading">載入中...</div></div>
+
+<button class="fab" id="fabAdd">＋</button>
+<div id="pickOverlay"></div>
+<div id="editOverlay"></div>
+
+<script>
+const SUPABASE_URL = 'https://vmalwtagpcxvxocsopvi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtYWx3dGFncGN4dnhvY3NvcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4ODA1NTUsImV4cCI6MjEwMTQ1NjU1NX0.dXmudSH8rMmIYw3g0FgmcunBjsaAmyOULQLa9qWrR74';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CATEGORY_META = {
+  '咖啡': { color: 'var(--coffee)', label: '咖啡' },
+  '美食': { color: 'var(--food)', label: '美食' },
+  '購物': { color: 'var(--shop)', label: '購物' },
+  '景點': { color: 'var(--sight)', label: '景點' },
+  '醫美': { color: 'var(--med)', label: '醫美' },
+};
+const CATEGORY_ALIAS = {
+  '咖啡':'咖啡', '聖水洞':'美食', '弘大美食':'美食',
+  '購物':'購物', '景點':'景點', '醫美':'醫美'
+};
+const CATEGORY_ORDER = ['咖啡','美食','購物','景點','醫美'];
+
+const TRIP_START = new Date('2026-10-21');
+const DAY_COUNT = 5;
+const WEEKDAYS = ['日','一','二','三','四','五','六'];
+
+let currentDay = 1;
+let places = [];
+let itinerary = [];
+
+function dayLabel(dayNum){
+  const d = new Date(TRIP_START);
+  d.setDate(d.getDate() + (dayNum - 1));
+  return { m: d.getMonth()+1, day: d.getDate(), w: WEEKDAYS[d.getDay()] };
+}
+
+function mapSearchQuery(p){
+  return encodeURIComponent(`${p?.名稱 || ''} ${p?.地址 || ''}`.trim());
+}
+
+async function loadData(){
+  const listEl = document.getElementById('list');
+  try {
+    const [{ data: placesData, error: pErr }, { data: itinData, error: iErr }] = await Promise.all([
+      sb.from('places').select('*'),
+      sb.from('itinerary').select('*, places(*)').order('day').order('sort_order'),
+    ]);
+    if (pErr) throw pErr;
+    if (iErr) throw iErr;
+    places = placesData || [];
+    itinerary = itinData || [];
+    renderDayTabs();
+    renderList();
+  } catch (e) {
+    console.error(e);
+    listEl.innerHTML = `<div class="empty-state">載入失敗：${e.message || '請稍後再試'}</div>`;
+  }
+}
+
+function renderDayTabs(){
+  const wrap = document.getElementById('dayTabs');
+  wrap.innerHTML = '';
+  for (let d = 1; d <= DAY_COUNT; d++){
+    const info = dayLabel(d);
+    const btn = document.createElement('button');
+    btn.className = 'daytab' + (d === currentDay ? ' active' : '');
+    btn.innerHTML = `Day ${d}<span class="d">${info.m}/${info.day} (${info.w})</span>`;
+    btn.addEventListener('click', () => { currentDay = d; renderDayTabs(); renderList(); });
+    wrap.appendChild(btn);
+  }
+}
+
+function itemsForDay(d){
+  return itinerary.filter(i => i.day === d).sort((a,b) => a.sort_order - b.sort_order);
+}
+
+function renderList(){
+  const listEl = document.getElementById('list');
+  const items = itemsForDay(currentDay);
+  if (!items.length){
+    listEl.innerHTML = `<div class="empty-state">這天還沒排行程，點右下角「＋」加入地點</div>`;
+    return;
+  }
+  listEl.innerHTML = '';
+  items.forEach((it, idx) => {
+    const p = it.places || {};
+    const cat = CATEGORY_ALIAS[p.分類] || p.分類;
+    const meta = CATEGORY_META[cat] || { color: 'var(--ink-soft)', label: cat || '' };
+    const q = mapSearchQuery(p);
+
+    const row = document.createElement('div');
+    row.className = 'item';
+    row.innerHTML = `
+      <div class="stripe" style="background:${meta.color}"></div>
+      <div class="reorder">
+        <button class="up" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button class="down" ${idx === items.length - 1 ? 'disabled' : ''}>▼</button>
+      </div>
+      <div class="item-body">
+        <div class="item-top">
+          <p class="name">${p.名稱 || '（地點已刪除）'}</p>
+        </div>
+        <div class="item-meta">
+          ${it.arrival_time ? `<span>🕒 ${it.arrival_time}</span>` : ''}
+          ${it.duration ? `<span>⏱ 停留 ${it.duration}</span>` : ''}
+          ${it.transport ? `<span>🚉 ${it.transport}</span>` : ''}
+        </div>
+        <div class="item-actions">
+          <button class="editBtn">編輯</button>
+          <a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Google地圖</a>
+          <a href="https://map.naver.com/v5/search/${q}" target="_blank" rel="noopener">Naver地圖</a>
+          <button class="danger removeBtn">移除</button>
+        </div>
+      </div>
+    `;
+    row.querySelector('.up').addEventListener('click', () => reorder(it, items[idx-1]));
+    row.querySelector('.down').addEventListener('click', () => reorder(it, items[idx+1]));
+    row.querySelector('.editBtn').addEventListener('click', () => openEdit(it, p, meta));
+    row.querySelector('.removeBtn').addEventListener('click', () => removeItem(it.id));
+    listEl.appendChild(row);
+  });
+}
+
+async function reorder(a, b){
+  if (!b) return;
+  try {
+    await Promise.all([
+      sb.from('itinerary').update({ sort_order: b.sort_order }).eq('id', a.id),
+      sb.from('itinerary').update({ sort_order: a.sort_order }).eq('id', b.id),
+    ]);
+    await loadData();
+  } catch (e) {
+    console.error(e);
+    alert('排序失敗，請再試一次');
+  }
+}
+
+async function removeItem(id){
+  if (!confirm('確定要從行程移除這個地點嗎？')) return;
+  try {
+    const { error } = await sb.from('itinerary').delete().eq('id', id);
+    if (error) throw error;
+    await loadData();
+  } catch (e) {
+    console.error(e);
+    alert('移除失敗，請再試一次');
+  }
+}
+
+function openEdit(it, p, meta){
+  const overlay = document.getElementById('editOverlay');
+  overlay.innerHTML = `
+    <div class="detail-overlay">
+      <div class="detail-sheet">
+        <div class="detail-top" style="background:${meta.color}"></div>
+        <div class="detail-head">
+          <h2>${p.名稱 || ''}</h2>
+          <button class="detail-close" id="editClose">✕</button>
+        </div>
+        <div class="detail-body">
+          <div class="form-group">
+            <label>預計到達時間</label>
+            <input id="e_arrival" type="text" placeholder="例如：14:00" value="${it.arrival_time || ''}">
+          </div>
+          <div class="form-group">
+            <label>預計停留時間</label>
+            <input id="e_duration" type="text" placeholder="例如：1.5 小時" value="${it.duration || ''}">
+          </div>
+          <div class="form-group">
+            <label>交通方式（從上一站怎麼過來）</label>
+            <input id="e_transport" type="text" placeholder="例如：步行 10 分鐘 / 搭地鐵 2 號線" value="${it.transport || ''}">
+          </div>
+          <div class="form-group">
+            <label>備註</label>
+            <textarea id="e_notes" placeholder="例如：先買門票">${it.notes || ''}</textarea>
+          </div>
+          <button class="form-submit" id="e_save">儲存</button>
+        </div>
+      </div>
+    </div>
+  `;
+  overlay.querySelector('.detail-overlay').addEventListener('click', (e) => {
+    if (e.target.classList.contains('detail-overlay')) closeEdit();
+  });
+  overlay.querySelector('#editClose').addEventListener('click', closeEdit);
+  overlay.querySelector('#e_save').addEventListener('click', async () => {
+    const btn = overlay.querySelector('#e_save');
+    btn.disabled = true; btn.textContent = '儲存中...';
+    try {
+      const { error } = await sb.from('itinerary').update({
+        arrival_time: document.getElementById('e_arrival').value.trim() || null,
+        duration: document.getElementById('e_duration').value.trim() || null,
+        transport: document.getElementById('e_transport').value.trim() || null,
+        notes: document.getElementById('e_notes').value.trim() || null,
+      }).eq('id', it.id);
+      if (error) throw error;
+      closeEdit();
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      alert('儲存失敗，請再試一次');
+      btn.disabled = false; btn.textContent = '儲存';
+    }
+  });
+}
+function closeEdit(){ document.getElementById('editOverlay').innerHTML = ''; }
+
+function openPicker(){
+  const overlay = document.getElementById('pickOverlay');
+  const addedIds = new Set(itemsForDay(currentDay).map(i => i.place_id));
+  let html = `
+    <div class="detail-overlay">
+      <div class="detail-sheet">
+        <div class="detail-top" style="background:var(--ink)"></div>
+        <div class="detail-head">
+          <h2>加入 Day ${currentDay}</h2>
+          <button class="detail-close" id="pickClose">✕</button>
+        </div>
+        <div class="detail-body">
+  `;
+  CATEGORY_ORDER.forEach(cat => {
+    const meta = CATEGORY_META[cat];
+    const items = places.filter(p => (CATEGORY_ALIAS[p.分類] || p.分類) === cat);
+    if (!items.length) return;
+    html += `<div class="cat-group"><h3><span class="cat-dot" style="background:${meta.color}"></span>${meta.label}</h3>`;
+    items.forEach(p => {
+      const already = addedIds.has(p.id);
+      html += `<div class="pick-item ${already ? 'added' : ''}" data-id="${p.id}">
+        <span>${p.名稱}${p.地區 ? ` <small>· ${p.地區}</small>` : ''}</span>
+        <span>${already ? '已加入' : '+'}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div></div></div>`;
+  overlay.innerHTML = html;
+
+  overlay.querySelector('.detail-overlay').addEventListener('click', (e) => {
+    if (e.target.classList.contains('detail-overlay')) closePicker();
+  });
+  overlay.querySelector('#pickClose').addEventListener('click', closePicker);
+  overlay.querySelectorAll('.pick-item:not(.added)').forEach(el => {
+    el.addEventListener('click', () => addToItinerary(parseInt(el.dataset.id)));
+  });
+}
+function closePicker(){ document.getElementById('pickOverlay').innerHTML = ''; }
+
+async function addToItinerary(placeId){
+  const existing = itemsForDay(currentDay);
+  const nextOrder = existing.length ? Math.max(...existing.map(i => i.sort_order)) + 1 : 0;
+  try {
+    const { error } = await sb.from('itinerary').insert({
+      place_id: placeId, day: currentDay, sort_order: nextOrder,
+    });
+    if (error) throw error;
+    closePicker();
+    await loadData();
+  } catch (e) {
+    console.error(e);
+    alert('加入失敗，請再試一次');
+  }
+}
+
+document.getElementById('fabAdd').addEventListener('click', openPicker);
+
+loadData();
+</script>
+
+</body>
+</html>
