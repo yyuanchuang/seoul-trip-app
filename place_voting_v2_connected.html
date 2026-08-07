@@ -195,6 +195,30 @@
     font-weight:700; font-size:14px; cursor:pointer;
   }
   .detail-like svg{ width:20px; height:20px; }
+
+  .fab{
+    position:fixed; right:20px; bottom:24px; z-index:150;
+    width:56px; height:56px; border-radius:999px; border:none;
+    background:var(--ink); color:#fff; font-size:28px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(28,27,26,0.3); cursor:pointer;
+  }
+
+  .form-group{ margin-bottom:14px; }
+  .form-group label{
+    display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:5px;
+  }
+  .form-group input, .form-group select, .form-group textarea{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:14px; font-family:'Noto Sans TC', sans-serif; box-sizing:border-box; background:#fff; color:var(--ink);
+  }
+  .form-group textarea{ resize:vertical; min-height:60px; }
+  .form-submit{
+    width:100%; padding:12px; border-radius:12px; border:none;
+    background:var(--ink); color:#fff; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+  .form-submit:disabled{ opacity:0.5; }
+  .form-error{ color:#C0392B; font-size:12px; margin:-6px 0 10px; }
 </style>
 </head>
 <body>
@@ -224,6 +248,8 @@
 </div>
 
 <div id="detailOverlay"></div>
+<div id="addOverlay"></div>
+<button class="fab" id="fabAdd">＋</button>
 
 <script>
 // ====== 設定：接你的 Supabase ======
@@ -444,6 +470,106 @@ document.getElementById('nameSubmit').addEventListener('click', () => {
   render();
 });
 document.getElementById('whoami').addEventListener('click', showNameOverlay);
+
+function openAddForm(){
+  if (!voterName) { showNameOverlay(); return; }
+  const overlay = document.getElementById('addOverlay');
+  const categoryOptions = CATEGORY_ORDER.map(c => `<option value="${c}">${CATEGORY_META[c].label}</option>`).join('');
+  overlay.innerHTML = `
+    <div class="detail-overlay">
+      <div class="detail-sheet">
+        <div class="detail-top" style="background:var(--ink)"></div>
+        <div class="detail-head">
+          <div><h2>新增地點</h2></div>
+          <button class="detail-close" id="addClose">✕</button>
+        </div>
+        <div class="detail-body">
+          <div class="form-group">
+            <label>分類</label>
+            <select id="f_cat">${categoryOptions}</select>
+          </div>
+          <div class="form-group">
+            <label>名稱 *</label>
+            <input id="f_name" type="text" placeholder="例如：XX 咖啡廳">
+          </div>
+          <div class="form-group">
+            <label>介紹</label>
+            <textarea id="f_intro" placeholder="推薦什麼、氣氛如何..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>地區</label>
+            <input id="f_area" type="text" placeholder="例如：江南區">
+          </div>
+          <div class="form-group">
+            <label>地址</label>
+            <input id="f_addr" type="text" placeholder="方便之後開地圖導航">
+          </div>
+          <div class="form-group">
+            <label>來源連結（IG／Threads／部落格）</label>
+            <input id="f_link" type="text" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label>誰找的</label>
+            <input id="f_by" type="text" value="${voterName}">
+          </div>
+          <div class="form-error" id="f_error" style="display:none;"></div>
+          <button class="form-submit" id="f_submit">新增地點</button>
+        </div>
+      </div>
+    </div>
+  `;
+  overlay.querySelector('.detail-overlay').addEventListener('click', (e) => {
+    if (e.target.classList.contains('detail-overlay')) closeAddForm();
+  });
+  overlay.querySelector('#addClose').addEventListener('click', closeAddForm);
+  overlay.querySelector('#f_submit').addEventListener('click', submitNewPlace);
+}
+
+function closeAddForm(){
+  document.getElementById('addOverlay').innerHTML = '';
+}
+
+async function submitNewPlace(){
+  const name = document.getElementById('f_name').value.trim();
+  const errBox = document.getElementById('f_error');
+  if (!name){
+    errBox.textContent = '請至少填名稱';
+    errBox.style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('f_submit');
+  btn.disabled = true;
+  btn.textContent = '新增中...';
+
+  const payload = {
+    分類: document.getElementById('f_cat').value,
+    名稱: name,
+    介紹: document.getElementById('f_intro').value.trim() || null,
+    地區: document.getElementById('f_area').value.trim() || null,
+    地址: document.getElementById('f_addr').value.trim() || null,
+    來源連結: document.getElementById('f_link').value.trim() || null,
+    加入者: document.getElementById('f_by').value.trim() || voterName,
+  };
+
+  try {
+    const { error } = await sb.from('places').insert(payload);
+    if (error) throw error;
+    closeAddForm();
+    await loadData();
+    // 自動展開新地點所在的分類
+    const cat = CATEGORY_ALIAS[payload.分類] || payload.分類;
+    openCategories.add(cat);
+    render();
+  } catch (e) {
+    console.error(e);
+    errBox.textContent = '新增失敗，請再試一次';
+    errBox.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = '新增地點';
+  }
+}
+
+document.getElementById('fabAdd').addEventListener('click', openAddForm);
 
 // 啟動
 updateWhoami();
