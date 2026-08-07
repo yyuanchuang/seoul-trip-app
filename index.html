@@ -30,6 +30,14 @@
     -webkit-font-smoothing:antialiased;
     padding-bottom:60px;
   }
+  nav.topnav{
+    display:flex; gap:0; background:var(--card); border-bottom:1px solid var(--line);
+  }
+  nav.topnav a{
+    flex:1; text-align:center; padding:13px 0; font-size:13px; font-weight:700;
+    text-decoration:none; color:var(--ink-soft); border-bottom:2px solid transparent;
+  }
+  nav.topnav a.active{ color:var(--ink); border-bottom-color:var(--ink); }
   header{
     padding:28px 20px 20px;
     position:sticky;
@@ -37,8 +45,7 @@
     background:var(--paper);
     z-index:10;
     border-bottom:1px solid var(--line);
-  }
-  header .row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  }  header .row{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   header .eyebrow{
     font-size:12px;
     letter-spacing:0.14em;
@@ -222,6 +229,12 @@
 </style>
 </head>
 <body>
+
+<nav class="topnav">
+  <a href="index.html" class="active">投票</a>
+  <a href="itinerary.html">行程</a>
+  <a href="expenses.html">花費</a>
+</nav>
 
 <header>
   <div class="row">
