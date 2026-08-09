@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>出發前待辦</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --paper:#F3EEE4;
+    --card:#FFFFFF;
+    --ink:#1C1B1A;
+    --ink-soft:#6B6560;
+    --line:#E4DDCF;
+    --l1:#0052A4;
+    --l2:#00A650;
+    --l3:#FF7E00;
+    --plum:#A0498B;
+    --alert:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif; -webkit-font-smoothing:antialiased; padding-bottom:90px;
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+  nav.topnav{
+    display:flex; background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  nav.topnav a{
+    flex:1; text-align:center; padding:13px 0; font-size:12.5px; font-weight:700;
+    text-decoration:none; color:var(--ink-soft); border-bottom:2px solid transparent;
+  }
+  nav.topnav a.active{ color:var(--ink); border-bottom-color:var(--ink); }
+  nav.topnav a:focus-visible{ outline:2px solid var(--l2); outline-offset:-2px; }
+
+  .wrap{ max-width:520px; margin:0 auto; }
+
+  header{ padding:22px 20px 6px; }
+  header .eyebrow{ font-size:11px; letter-spacing:0.18em; color:var(--ink-soft); font-weight:700; }
+  header h1{ font-family:'Noto Serif TC', serif; font-weight:900; font-size:25px; margin:6px 0 0; }
+
+  .progress-card{
+    margin:16px 16px 4px; background:var(--card); border:1px solid var(--line);
+    border-radius:18px; padding:18px;
+  }
+  .progress-top{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+  .progress-top .big{ font-family:'Noto Serif TC', serif; font-size:26px; font-weight:900; }
+  .progress-top .big small{ font-size:14px; color:var(--ink-soft); font-weight:700; }
+  .progress-top .pct{ font-size:13px; font-weight:700; color:var(--l2); }
+  .bar{ height:9px; background:var(--paper); border-radius:999px; margin-top:12px; overflow:hidden; }
+  .bar span{ display:block; height:100%; background:var(--l2); border-radius:999px; transition:width .35s ease; width:0; }
+  .progress-note{ font-size:12px; color:var(--ink-soft); margin-top:10px; line-height:1.7; }
+
+  .group{ padding:22px 16px 0; }
+  .group h2{
+    font-family:'Noto Serif TC', serif; font-size:15px; font-weight:900; margin:0 0 9px;
+    display:flex; align-items:center; gap:8px; padding-left:4px;
+  }
+  .group h2 .dot{ width:9px; height:9px; border-radius:999px; flex:none; }
+  .group h2 .rest{ font-family:'Noto Sans TC',sans-serif; font-size:11.5px; font-weight:700; color:var(--ink-soft); }
+
+  .items{ display:flex; flex-direction:column; gap:8px; }
+  .item{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:13px 14px; display:flex; gap:11px; align-items:flex-start; cursor:pointer;
+  }
+  .item:focus-visible{ outline:2px solid var(--l2); outline-offset:2px; }
+  .check{
+    width:21px; height:21px; border-radius:7px; border:2px solid var(--line);
+    flex:none; margin-top:1px; background:var(--card); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px;
+    padding:0; line-height:1;
+  }
+  .check.on{ background:var(--l2); border-color:var(--l2); }
+  .item .body{ flex:1; min-width:0; }
+  .item .t{ font-size:14px; font-weight:700; line-height:1.5; }
+  .item.done .t{ color:var(--ink-soft); text-decoration:line-through; }
+  .item .meta{ display:flex; flex-wrap:wrap; gap:6px; margin-top:5px; }
+  .item .meta span{
+    font-size:11px; color:var(--ink-soft); background:var(--paper);
+    padding:2px 8px; border-radius:999px;
+  }
+  .item .n{ font-size:11.5px; color:var(--ink-soft); margin-top:6px; line-height:1.6; }
+
+  .fab{
+    position:fixed; right:20px; bottom:24px; z-index:150;
+    width:56px; height:56px; border-radius:999px; border:none;
+    background:var(--ink); color:#fff; font-size:28px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(28,27,26,0.3); cursor:pointer;
+  }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(28,27,26,0.6);
+    display:flex; align-items:flex-end; justify-content:center; z-index:200;
+  }
+  .sheet{
+    background:var(--paper); border-radius:20px 20px 0 0;
+    max-width:520px; width:100%; max-height:88vh; overflow-y:auto; padding:0 0 24px;
+  }
+  .sheet-head{ padding:20px 20px 12px; display:flex; justify-content:space-between; gap:12px; }
+  .sheet-head h3{ font-family:'Noto Serif TC', serif; font-size:18px; font-weight:900; margin:0; }
+  .x{
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    width:30px; height:30px; flex:none; font-size:15px; cursor:pointer; color:var(--ink-soft);
+  }
+  .sheet-body{ padding:0 20px; }
+  .fg{ margin-bottom:13px; }
+  .fg label{ display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:5px; }
+  .fg input, .fg select, .fg textarea{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:14px; font-family:'Noto Sans TC', sans-serif; background:#fff; color:var(--ink);
+  }
+  .fg textarea{ min-height:64px; resize:vertical; }
+  .frow{ display:flex; gap:10px; }
+  .frow .fg{ flex:1; }
+  .save{
+    width:100%; padding:12px; border-radius:12px; border:none;
+    background:var(--ink); color:#fff; font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+  .del{
+    width:100%; padding:10px; border-radius:12px; border:1px solid #EAD3CF;
+    background:#FBF2F0; color:var(--alert); font-weight:700; font-size:13px; cursor:pointer; margin-top:8px;
+  }
+  .err{ color:var(--alert); font-size:12px; margin-bottom:10px; display:none; }
+  .state{ text-align:center; padding:56px 20px; color:var(--ink-soft); font-size:13px; line-height:1.8; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <a href="index.html">手冊</a>
+  <a href="vote.html">投票</a>
+  <a href="itinerary.html">行程</a>
+  <a href="expenses.html">花費</a>
+  <a href="todo.html" class="active">待辦</a>
+</nav>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">BEFORE WE GO</div>
+    <h1>出發前待辦</h1>
+  </header>
+
+  <div class="progress-card">
+    <div class="progress-top">
+      <div class="big" id="pCount">–<small> 件待辦</small></div>
+      <div class="pct" id="pPct"></div>
+    </div>
+    <div class="bar"><span id="pBar"></span></div>
+    <div class="progress-note" id="pNote">載入中…</div>
+  </div>
+
+  <div id="list"><div class="state">載入中…</div></div>
+</div>
+
+<button class="fab" id="add" aria-label="新增待辦">＋</button>
+<div id="modal"></div>
+
+<script>
+const SUPABASE_URL = 'https://vmalwtagpcxvxocsopvi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtYWx3dGFncGN4dnhvY3NvcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4ODA1NTUsImV4cCI6MjEwMTQ1NjU1NX0.dXmudSH8rMmIYw3g0FgmcunBjsaAmyOULQLa9qWrR74';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CATS = [
+  { name:'交通住宿', color:'#0052A4' },
+  { name:'資料待補', color:'#FF7E00' },
+  { name:'行程規劃', color:'#00A650' },
+  { name:'行前準備', color:'#A0498B' },
+  { name:'其他',     color:'#6B6560' }
+];
+const catColor = n => (CATS.find(c => c.name === n) || CATS[CATS.length-1]).color;
+
+let todos = [];
+
+async function load(){
+  const box = document.getElementById('list');
+  try{
+    const { data, error } = await sb.from('todos').select('*')
+      .order('sort_order', { ascending:true }).order('created_at', { ascending:true });
+    if (error) throw error;
+    todos = data || [];
+    render();
+  }catch(e){
+    console.error(e);
+    box.innerHTML = '<div class="state">讀不到待辦清單。<br>請確認資料表已建立，或稍後再試一次。</div>';
+    document.getElementById('pNote').textContent = '目前無法載入';
+  }
+}
+
+function render(){
+  const total = todos.length;
+  const done = todos.filter(t => t.done).length;
+  const left = total - done;
+  const pct = total ? Math.round(done / total * 100) : 0;
+
+  document.getElementById('pCount').innerHTML = left + '<small> 件待辦</small>';
+  document.getElementById('pPct').textContent = total ? pct + '% 完成' : '';
+  document.getElementById('pBar').style.width = pct + '%';
+  document.getElementById('pNote').textContent = total
+    ? (left === 0 ? '全部完成，可以出發了。' : '共 ' + total + ' 件，已完成 ' + done + ' 件。點項目可以編輯，打勾表示完成。')
+    : '還沒有待辦事項，點右下角「＋」新增。';
+
+  const box = document.getElementById('list');
+  if (!total){
+    box.innerHTML = '<div class="state">還沒有待辦事項，點右下角「＋」新增。</div>';
+    return;
+  }
+
+  const names = CATS.map(c => c.name).filter(n => todos.some(t => (t.category || '其他') === n));
+  box.innerHTML = '';
+
+  names.forEach(name => {
+    const rows = todos.filter(t => (t.category || '其他') === name);
+    const restN = rows.filter(t => !t.done).length;
+
+    const g = document.createElement('section');
+    g.className = 'group';
+    g.innerHTML = '<h2><span class="dot" style="background:' + catColor(name) + '"></span>' + name +
+                  '<span class="rest">剩 ' + restN + ' 件</span></h2><div class="items"></div>';
+    const holder = g.querySelector('.items');
+
+    rows.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'item' + (t.done ? ' done' : '');
+      row.tabIndex = 0;
+
+      const btn = document.createElement('button');
+      btn.className = 'check' + (t.done ? ' on' : '');
+      btn.setAttribute('aria-label', t.done ? '標成未完成' : '標成完成');
+      btn.textContent = t.done ? '✓' : '';
+      btn.addEventListener('click', ev => { ev.stopPropagation(); toggle(t); });
+
+      const body = document.createElement('div');
+      body.className = 'body';
+      let meta = '';
+      if (t.owner) meta += '<span>👤 ' + esc(t.owner) + '</span>';
+      if (t.due_date) meta += '<span>📅 ' + esc(t.due_date) + '</span>';
+      body.innerHTML = '<div class="t">' + esc(t.title) + '</div>' +
+                       (meta ? '<div class="meta">' + meta + '</div>' : '') +
+                       (t.notes ? '<div class="n">' + esc(t.notes) + '</div>' : '');
+
+      row.appendChild(btn);
+      row.appendChild(body);
+      row.addEventListener('click', () => open(t));
+      row.addEventListener('keydown', ev => { if (ev.key === 'Enter') open(t); });
+      holder.appendChild(row);
+    });
+
+    box.appendChild(g);
+  });
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function toggle(t){
+  const next = !t.done;
+  t.done = next;
+  render();
+  const { error } = await sb.from('todos').update({ done: next }).eq('id', t.id);
+  if (error){ console.error(error); t.done = !next; render(); }
+}
+
+function open(t){
+  const isNew = !t;
+  const d = t || { title:'', category:'行前準備', owner:'', due_date:'', notes:'' };
+  const opts = CATS.map(c => '<option value="' + c.name + '"' + (d.category === c.name ? ' selected' : '') + '>' + c.name + '</option>').join('');
+
+  document.getElementById('modal').innerHTML =
+    '<div class="overlay"><div class="sheet">' +
+      '<div class="sheet-head"><h3>' + (isNew ? '新增待辦' : '編輯待辦') + '</h3><button class="x" id="mx">✕</button></div>' +
+      '<div class="sheet-body">' +
+        '<div class="fg"><label>要做什麼 *</label><input id="f_t" type="text" placeholder="例如：訂包車" value="' + esc(d.title) + '"></div>' +
+        '<div class="frow">' +
+          '<div class="fg"><label>分類</label><select id="f_c">' + opts + '</select></div>' +
+          '<div class="fg"><label>誰負責</label><input id="f_o" type="text" placeholder="選填" value="' + esc(d.owner || '') + '"></div>' +
+        '</div>' +
+        '<div class="fg"><label>期限</label><input id="f_d" type="date" value="' + (d.due_date || '') + '"></div>' +
+        '<div class="fg"><label>備註</label><textarea id="f_n" placeholder="選填">' + esc(d.notes || '') + '</textarea></div>' +
+        '<div class="err" id="f_e"></div>' +
+        '<button class="save" id="f_s">' + (isNew ? '新增' : '儲存') + '</button>' +
+        (isNew ? '' : '<button class="del" id="f_del">刪除這件待辦</button>') +
+      '</div>' +
+    '</div></div>';
+
+  const modal = document.getElementById('modal');
+  modal.querySelector('.overlay').addEventListener('click', ev => {
+    if (ev.target.classList.contains('overlay')) close();
+  });
+  document.getElementById('mx').addEventListener('click', close);
+
+  document.getElementById('f_s').addEventListener('click', async () => {
+    const title = document.getElementById('f_t').value.trim();
+    const err = document.getElementById('f_e');
+    if (!title){ err.textContent = '請填要做什麼'; err.style.display = 'block'; return; }
+    const btn = document.getElementById('f_s');
+    btn.disabled = true; btn.textContent = '處理中…';
+
+    const payload = {
+      title,
+      category: document.getElementById('f_c').value,
+      owner: document.getElementById('f_o').value.trim() || null,
+      due_date: document.getElementById('f_d').value || null,
+      notes: document.getElementById('f_n').value.trim() || null
+    };
+
+    try{
+      let res;
+      if (isNew){
+        payload.sort_order = 90;
+        res = await sb.from('todos').insert(payload);
+      } else {
+        res = await sb.from('todos').update(payload).eq('id', t.id);
+      }
+      if (res.error) throw res.error;
+      close(); await load();
+    }catch(e){
+      console.error(e);
+      err.textContent = '存不起來，請再試一次'; err.style.display = 'block';
+      btn.disabled = false; btn.textContent = isNew ? '新增' : '儲存';
+    }
+  });
+
+  if (!isNew){
+    document.getElementById('f_del').addEventListener('click', async () => {
+      if (!confirm('確定刪除這件待辦？')) return;
+      const { error } = await sb.from('todos').delete().eq('id', t.id);
+      if (error){ console.error(error); alert('刪不掉，請再試一次'); return; }
+      close(); await load();
+    });
+  }
+}
+function close(){ document.getElementById('modal').innerHTML = ''; }
+
+document.getElementById('add').addEventListener('click', () => open(null));
+load();
+</script>
+
+</body>
+</html>

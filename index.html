@@ -6,6 +6,7 @@
 <title>首爾家族旅行手冊</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{
     --paper:#F3EEE4;
@@ -14,91 +15,219 @@
     --ink-soft:#6B6560;
     --line:#E4DDCF;
 
-    --coffee:#00A650;
-    --food:#FF7E00;
-    --shop:#00A5DE;
-    --sight:#0052A4;
-    --med:#A0498B;
+    --l1:#0052A4;
+    --l2:#00A650;
+    --l3:#FF7E00;
+    --l4:#00A5DE;
+    --l6:#CD7C2F;
+    --arex:#0090D2;
+    --plum:#A0498B;
+    --alert:#C0392B;
   }
   *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
   body{
     margin:0; background:var(--paper); color:var(--ink);
-    font-family:'Noto Sans TC', sans-serif; -webkit-font-smoothing:antialiased; padding-bottom:60px;
+    font-family:'Noto Sans TC', sans-serif; -webkit-font-smoothing:antialiased;
   }
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *{animation:none !important; transition:none !important;}
+  }
+
   nav.topnav{
-    display:flex; gap:0; background:var(--card); border-bottom:1px solid var(--line);
-    position:sticky; top:0; z-index:20;
+    display:flex; background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:500;
   }
   nav.topnav a{
-    flex:1; text-align:center; padding:13px 0; font-size:13px; font-weight:700;
+    flex:1; text-align:center; padding:13px 0; font-size:12.5px; font-weight:700;
     text-decoration:none; color:var(--ink-soft); border-bottom:2px solid transparent;
   }
   nav.topnav a.active{ color:var(--ink); border-bottom-color:var(--ink); }
+  nav.topnav a:focus-visible{ outline:2px solid var(--l2); outline-offset:-2px; }
 
-  .cover{
-    padding:36px 24px 28px; text-align:center; border-bottom:1px solid var(--line);
+  .wrap{ max-width:520px; margin:0 auto; }
+
+  /* ---------- HERO ---------- */
+  .hero{ background:var(--card); border-bottom:1px solid var(--line); overflow:hidden; }
+  .hero svg{ display:block; width:100%; height:auto; }
+  .hero-text{ padding:20px 22px 24px; }
+  .hero-text .eyebrow{
+    font-size:11px; letter-spacing:0.2em; color:var(--ink-soft); font-weight:700;
   }
-  .cover .eyebrow{
-    font-size:12px; letter-spacing:0.18em; color:var(--ink-soft); font-weight:700; text-transform:uppercase;
+  .hero-text h1{
+    font-family:'Noto Serif TC', serif; font-weight:900; font-size:29px;
+    margin:6px 0 8px; letter-spacing:-0.02em; line-height:1.25;
   }
-  .cover h1{
-    font-family:'Noto Serif TC', serif; font-weight:900; font-size:30px; margin:8px 0 6px; letter-spacing:-0.01em;
+  .hero-text .lede{ font-size:13.5px; line-height:1.85; color:var(--ink-soft); }
+
+  /* ---------- QUICK FACTS ---------- */
+  .facts{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:18px 16px 4px; }
+  .fact{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px;
   }
-  .cover .dates{ font-size:13px; color:var(--ink-soft); margin-bottom:16px; }
-  .cover .welcome{
-    font-size:14px; line-height:1.9; color:var(--ink); max-width:420px; margin:0 auto;
-    text-align:left; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px;
+  .fact .k{ font-size:10.5px; letter-spacing:0.1em; color:var(--ink-soft); font-weight:700; }
+  .fact .v{ font-family:'Noto Serif TC', serif; font-size:17px; font-weight:900; margin-top:3px; }
+  .fact .s{ font-size:11px; color:var(--ink-soft); margin-top:1px; }
+
+  /* ---------- SECTION ---------- */
+  .section{ padding:28px 16px 0; }
+  .sec-head{ padding:0 4px 12px; }
+  .sec-head h2{
+    font-family:'Noto Serif TC', serif; font-size:18px; font-weight:900; margin:0;
+  }
+  .sec-head p{ font-size:12.5px; color:var(--ink-soft); margin:4px 0 0; line-height:1.7; }
+
+  /* ---------- SIGNATURE: ROUTE DIAGRAM ---------- */
+  .route{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:20px 18px 8px; position:relative;
+  }
+  .stop{
+    position:relative; padding:0 0 22px 34px; display:block;
+    text-decoration:none; color:inherit;
+  }
+  .stop:last-child{ padding-bottom:6px; }
+  .stop::before{
+    content:''; position:absolute; left:8px; top:16px; bottom:-6px;
+    width:3px; background:var(--line);
+  }
+  .stop:last-child::before{ display:none; }
+  .stop .node{
+    position:absolute; left:0; top:3px; width:19px; height:19px; border-radius:999px;
+    background:var(--card); border:4px solid var(--ink); box-sizing:border-box;
+  }
+  .stop .node.home{
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; border-width:3px;
+  }
+  .stop .name{
+    font-family:'Noto Serif TC', serif; font-size:15.5px; font-weight:900;
+    display:flex; align-items:baseline; gap:7px; flex-wrap:wrap;
+  }
+  .stop .count{
+    font-family:'Noto Sans TC', sans-serif; font-size:11px; font-weight:700;
+    color:#fff; padding:1px 8px; border-radius:999px; letter-spacing:0.02em;
+  }
+  .stop .desc{ font-size:12.5px; color:var(--ink-soft); margin-top:3px; line-height:1.65; }
+  .stop:focus-visible{ outline:2px solid var(--l2); outline-offset:3px; border-radius:6px; }
+
+  .route-foot{
+    border-top:1px dashed var(--line); margin-top:6px; padding:12px 0 10px;
+    font-size:11.5px; color:var(--ink-soft); line-height:1.7;
   }
 
-  .section{ padding:26px 20px 6px; max-width:520px; margin:0 auto; }
-  .section h2{
-    font-family:'Noto Serif TC', serif; font-size:17px; font-weight:700; margin:0 0 12px;
-    display:flex; align-items:center; gap:8px;
+  /* ---------- MAP ---------- */
+  #map{
+    height:340px; border-radius:18px; border:1px solid var(--line);
+    background:var(--card); z-index:1;
   }
-  .section h2 .dot{ width:10px; height:10px; border-radius:999px; flex:none; }
+  .leaflet-container{ font-family:'Noto Sans TC', sans-serif; border-radius:18px; }
+  .pin-label{
+    background:transparent; border:none; box-shadow:none;
+  }
+  .pin-dot{
+    width:16px; height:16px; border-radius:999px; border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.35);
+  }
+  .pin-home{
+    width:30px; height:30px; border-radius:999px; background:var(--ink);
+    border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+  }
 
+  /* ---------- CARDS ---------- */
   .card{
-    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin-bottom:12px;
+    background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px 18px;
   }
-  .card .label{ font-size:11px; font-weight:700; color:var(--ink-soft); margin-bottom:3px; }
-  .card .val{ font-size:14px; margin-bottom:10px; line-height:1.6; }
-  .card .val:last-child{ margin-bottom:0; }
-  .card a.btn{
-    display:inline-block; margin-top:4px; font-size:13px; font-weight:700; color:#fff;
+  .card + .card{ margin-top:10px; }
+  .card .k{ font-size:10.5px; letter-spacing:0.1em; font-weight:700; color:var(--ink-soft); }
+  .card .v{ font-size:14px; line-height:1.75; margin-top:3px; }
+  .card .v + .k{ margin-top:12px; }
+  .btn{
+    display:inline-block; margin-top:12px; font-size:13px; font-weight:700; color:#fff;
     background:var(--ink); padding:9px 16px; border-radius:10px; text-decoration:none;
   }
+  .btn.ghost{
+    background:transparent; color:var(--ink); border:1px solid var(--line); margin-left:6px;
+  }
+  .btn:focus-visible{ outline:2px solid var(--l2); outline-offset:2px; }
 
-  .intro-text{ font-size:14px; line-height:1.9; color:var(--ink); }
-  .intro-text p{ margin:0 0 12px; }
-
-  .subway-legend{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
-  .subway-legend .row{ display:flex; align-items:center; gap:10px; font-size:13px; }
-  .subway-legend .chip{
-    width:24px; height:24px; border-radius:999px; flex:none; color:#fff; font-size:11px; font-weight:700;
-    display:flex; align-items:center; justify-content:center; font-family:'Noto Serif TC', serif;
+  .flight{
+    display:flex; align-items:center; gap:10px; padding:2px 0;
+  }
+  .flight .port{ text-align:center; flex:none; }
+  .flight .port .code{ font-family:'Noto Serif TC', serif; font-size:19px; font-weight:900; line-height:1.1; }
+  .flight .port .time{ font-size:12.5px; font-weight:700; margin-top:2px; }
+  .flight .port .day{ font-size:10.5px; color:var(--ink-soft); }
+  .flight .track{
+    flex:1; height:1px; background:var(--line); position:relative;
+  }
+  .flight .track span{
+    position:absolute; left:50%; top:-9px; transform:translateX(-50%);
+    background:var(--card); padding:0 6px; font-size:11px; color:var(--ink-soft);
   }
 
-  .emergency-grid{ display:flex; flex-direction:column; gap:10px; }
-  .emergency-row{
-    display:flex; align-items:center; justify-content:space-between; background:var(--card);
-    border:1px solid var(--line); border-radius:14px; padding:12px 16px;
+  .alertbox{
+    background:#FBF2F0; border:1px solid #EAD3CF; border-radius:12px;
+    padding:11px 13px; margin-top:12px; font-size:12px; line-height:1.75; color:#8C3A2E;
   }
-  .emergency-row .what{ font-size:13px; font-weight:700; }
-  .emergency-row .sub{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
-  .emergency-row .num{ font-family:'Noto Serif TC', serif; font-size:20px; font-weight:900; }
+  .alertbox b{ color:var(--alert); }
 
-  .weather-row{ display:flex; gap:10px; }
-  .weather-row .card{ flex:1; text-align:center; }
-  .weather-row .temp{ font-family:'Noto Serif TC', serif; font-size:22px; font-weight:900; }
-  .weather-row .lbl{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
-
-  .cta-row{ display:flex; gap:10px; padding:26px 20px 10px; max-width:520px; margin:0 auto; }
-  .cta-row a{
-    flex:1; text-align:center; padding:14px 0; border-radius:14px; background:var(--card);
-    border:1px solid var(--line); text-decoration:none; color:var(--ink); font-weight:700; font-size:13px;
+  /* ---------- OPTIONS ---------- */
+  .opt{ padding:13px 0; }
+  .opt + .opt{ border-top:1px solid var(--line); }
+  .opt .top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .opt .nm{ font-family:'Noto Serif TC', serif; font-size:14.5px; font-weight:900; }
+  .opt .tag{
+    font-size:10px; font-weight:700; color:#fff; padding:2px 8px; border-radius:999px;
+    letter-spacing:0.04em;
   }
+  .opt .why{ font-size:12.5px; color:var(--ink-soft); line-height:1.7; margin-top:5px; }
+  .opt.dim .nm{ color:var(--ink-soft); }
 
-  .note{ font-size:12px; color:var(--ink-soft); text-align:center; padding:6px 20px 0; }
+  /* ---------- INFO GRID ---------- */
+  .info-grid{ display:flex; flex-direction:column; gap:10px; }
+  .info{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+  }
+  .info h3{
+    font-size:13.5px; font-weight:700; margin:0 0 8px;
+    display:flex; align-items:center; gap:7px;
+  }
+  .info h3 .ic{ font-size:15px; }
+  .info .row{
+    display:flex; justify-content:space-between; align-items:center; gap:12px;
+    font-size:12.5px; padding:5px 0;
+  }
+  .info .row + .row{ border-top:1px solid var(--line); }
+  .info .row .lbl{ color:var(--ink-soft); }
+  .info .row .val{ font-weight:700; text-align:right; }
+  .info .row .val.tel{ font-family:'Noto Serif TC', serif; font-size:17px; font-weight:900; }
+  .info .note{ font-size:11.5px; color:var(--ink-soft); line-height:1.7; margin-top:8px; }
+
+  .metro-row{ display:flex; align-items:center; gap:9px; font-size:12.5px; padding:5px 0; }
+  .metro-row + .metro-row{ border-top:1px solid var(--line); }
+  .metro-chip{
+    width:22px; height:22px; border-radius:999px; flex:none; color:#fff;
+    font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    font-family:'Noto Serif TC', serif;
+  }
+  .metro-chip.wide{ width:auto; padding:0 8px; border-radius:999px; font-size:10px; }
+
+  /* ---------- FOOTER CTA ---------- */
+  .footer-cta{ padding:30px 16px 40px; }
+  .footer-cta .grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .footer-cta a{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:16px 6px; text-align:center; text-decoration:none; color:var(--ink);
+  }
+  .footer-cta a .ic{ font-size:19px; display:block; }
+  .footer-cta a .tx{ font-size:12px; font-weight:700; margin-top:5px; display:block; }
+  .footer-cta a:focus-visible{ outline:2px solid var(--l2); outline-offset:2px; }
+  .colophon{
+    text-align:center; font-size:11px; color:var(--ink-soft); padding:18px 20px 0; line-height:1.8;
+  }
 </style>
 </head>
 <body>
@@ -108,129 +237,410 @@
   <a href="vote.html">投票</a>
   <a href="itinerary.html">行程</a>
   <a href="expenses.html">花費</a>
+  <a href="todo.html">待辦</a>
 </nav>
 
-<div class="cover">
-  <div class="eyebrow">Family Trip Handbook</div>
-  <h1>首爾家族旅行手冊</h1>
-  <div class="dates">2026.10.21 – 10.25 ｜ 四大一小</div>
-  <div class="welcome">
-    首爾五天四夜的住宿、行程與實用資訊都整理在這裡。出發前可先查看住宿位置、活動區域、天氣穿搭與緊急聯絡方式；旅途中也能快速切換投票、行程與花費紀錄。
-  </div>
-</div>
+<div class="wrap">
 
-<div class="section">
-  <h2><span class="dot" style="background:var(--sight)"></span>住宿</h2>
-  <div class="card">
-    <div class="label">飯店名稱</div>
-    <div class="val">On Stay - Hotel Quality Stay</div>
-    <div class="label">位置</div>
-    <div class="val">公寓式住宿，附獨立廚房與客廳，適合一家人一起住。距離弘大站（홍대입구역）約 800 公尺，附近就是我們投票清單裡很多咖啡、美食、購物地點集中的區域。</div>
-    <a class="btn" href="https://www.booking.com/Share-GoEkXt" target="_blank" rel="noopener">查看訂房資訊 →</a>
-  </div>
-</div>
+  <!-- HERO -->
+  <header class="hero">
+    <svg viewBox="0 0 520 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="首爾城市剪影插畫">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#F7F3EA"/>
+          <stop offset="100%" stop-color="#FFFFFF"/>
+        </linearGradient>
+        <linearGradient id="river" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#00A5DE" stop-opacity="0.20"/>
+          <stop offset="100%" stop-color="#0052A4" stop-opacity="0.08"/>
+        </linearGradient>
+      </defs>
 
-<div class="section">
-  <h2><span class="dot" style="background:var(--food)"></span>機票</h2>
-  <div class="card">
-    <div class="label">去程　2026/10/21（三）</div>
-    <div class="val">
-      TPE 桃園國際機場 T1　20:00 起飛<br>
-      → ICN 仁川國際機場 T1　23:30 抵達<br>
-      座位｜6B、6C
+      <rect width="520" height="260" fill="url(#sky)"/>
+
+      <!-- 遠山 -->
+      <path d="M0 150 L46 116 L82 138 L118 104 L156 140 L186 124 L214 150 Z" fill="#1C1B1A" opacity="0.10"/>
+      <path d="M300 150 L338 118 L372 142 L410 110 L448 142 L480 126 L520 150 Z" fill="#1C1B1A" opacity="0.10"/>
+
+      <!-- N首爾塔 -->
+      <g>
+        <path d="M246 152 L252 92 L256 92 L262 152 Z" fill="#1C1B1A" opacity="0.85"/>
+        <path d="M244 96 L264 96 L260 82 L248 82 Z" fill="#1C1B1A" opacity="0.85"/>
+        <rect x="252.4" y="52" width="3.2" height="30" fill="#1C1B1A" opacity="0.85"/>
+        <circle cx="254" cy="49" r="3.4" fill="#FF7E00"/>
+      </g>
+
+      <!-- 建築群 -->
+      <g fill="#1C1B1A" opacity="0.82">
+        <rect x="16" y="128" width="26" height="34"/>
+        <rect x="48" y="112" width="20" height="50"/>
+        <rect x="74" y="134" width="30" height="28"/>
+        <rect x="110" y="120" width="18" height="42"/>
+        <rect x="134" y="140" width="34" height="22"/>
+        <rect x="176" y="126" width="22" height="36"/>
+        <rect x="206" y="136" width="28" height="26"/>
+        <rect x="274" y="132" width="24" height="30"/>
+        <rect x="306" y="118" width="18" height="44"/>
+        <rect x="332" y="138" width="32" height="24"/>
+        <rect x="372" y="124" width="20" height="38"/>
+        <rect x="400" y="140" width="30" height="22"/>
+        <rect x="438" y="122" width="18" height="40"/>
+        <rect x="464" y="134" width="40" height="28"/>
+      </g>
+      <!-- 樓層窗光（地鐵色點綴，克制） -->
+      <g opacity="0.9">
+        <rect x="53" y="120" width="4" height="4" fill="#00A650"/>
+        <rect x="60" y="132" width="4" height="4" fill="#00A650"/>
+        <rect x="115" y="128" width="4" height="4" fill="#FF7E00"/>
+        <rect x="311" y="126" width="4" height="4" fill="#00A5DE"/>
+        <rect x="377" y="132" width="4" height="4" fill="#0052A4"/>
+        <rect x="443" y="130" width="4" height="4" fill="#A0498B"/>
+      </g>
+
+      <!-- 漢江 -->
+      <rect x="0" y="162" width="520" height="98" fill="url(#river)"/>
+      <!-- 橋 -->
+      <g stroke="#1C1B1A" stroke-opacity="0.28" stroke-width="2" fill="none">
+        <line x1="0" y1="182" x2="520" y2="182"/>
+        <path d="M60 182 q22 -15 44 0"/>
+        <path d="M180 182 q22 -15 44 0"/>
+        <path d="M300 182 q22 -15 44 0"/>
+        <path d="M420 182 q22 -15 44 0"/>
+      </g>
+      <!-- 水波 -->
+      <g stroke="#0052A4" stroke-opacity="0.16" stroke-width="1.6" fill="none">
+        <path d="M30 208 q16 -6 32 0 t32 0"/>
+        <path d="M210 224 q16 -6 32 0 t32 0"/>
+        <path d="M370 206 q16 -6 32 0 t32 0"/>
+        <path d="M120 240 q16 -6 32 0 t32 0"/>
+        <path d="M300 246 q16 -6 32 0 t32 0"/>
+      </g>
+    </svg>
+
+    <div class="hero-text">
+      <div class="eyebrow">SEOUL · 5 DAYS</div>
+      <h1>首爾家族旅行手冊</h1>
+      <p class="lede">五天四夜的住宿、行程與實用資訊都整理在這裡。出發前可先看住宿位置、活動區域與天氣穿搭；旅途中也能隨時切換投票、行程與花費紀錄。</p>
     </div>
-    <div class="label">回程　2026/10/25（日）</div>
-    <div class="val">
-      ICN 仁川國際機場 T1　00:30 起飛<br>
-      → TPE 桃園國際機場 T1　02:15 抵達<br>
-      航班｜IT603　座位｜8A、8B
+  </header>
+
+  <!-- QUICK FACTS -->
+  <div class="facts">
+    <div class="fact">
+      <div class="k">日期</div>
+      <div class="v">10/21 – 10/25</div>
+      <div class="s">五天四夜</div>
     </div>
-    <div class="note" style="text-align:left; padding:6px 0 0;">⚠️ 回程是 10/25 凌晨 00:30 起飛，代表 10/24 晚上就要提前離開飯店前往機場，不是隔天早上出發，記得提前抓時間。目前僅有 2 人（本人＋媽媽）機票資訊，其餘家人資訊待補。</div>
-  </div>
-</div>
-
-<div class="section">
-  <h2><span class="dot" style="background:var(--coffee)"></span>初次見面，首爾</h2>
-  <div class="card intro-text">
-    <p>首爾是韓國的首都，也是全國政治、經濟、文化的中心。城市不算小，但地鐵系統非常方便，四通八達，這趟大部分行程都能靠地鐵搞定，不太需要打車。</p>
-    <p>這趟主要會在<strong>弘大／麻浦區</strong>一帶活動——這裡年輕、有活力，咖啡廳和小店特別多，也是住宿的所在地。天氣好的話，隨處走走逛逛就很舒服。</p>
-    <p>語言方面，年輕店員多少會一點英文，加上翻譯 App 現在都很方便，實際溝通不太會有問題。</p>
-  </div>
-</div>
-
-<div class="section">
-  <h2><span class="dot" style="background:var(--shop)"></span>認識首爾地鐵</h2>
-  <div class="card">
-    <div class="val" style="margin-bottom:12px;">首爾地鐵用顏色分線，這個 App 裡的分類顏色也是照這個邏輯設計的，先認識一下，之後在行程表看到色塊會更有感覺：</div>
-    <div class="subway-legend">
-      <div class="row"><span class="chip" style="background:var(--sight)">1</span> 深藍線：市中心、傳統景點</div>
-      <div class="row"><span class="chip" style="background:var(--coffee)">2</span> 綠線：弘大、江南、市區環狀</div>
-      <div class="row"><span class="chip" style="background:var(--food)">3</span> 橘線：新沙洞、狎鷗亭</div>
-      <div class="row"><span class="chip" style="background:var(--shop)">4</span> 天藍線：明洞、東大門</div>
-      <div class="row"><span class="chip" style="background:var(--med)">5</span> 紫線：市區西側、機場方向</div>
+    <div class="fact">
+      <div class="k">同行</div>
+      <div class="v">四大一小</div>
+      <div class="s">5 人</div>
+    </div>
+    <div class="fact">
+      <div class="k">住宿區域</div>
+      <div class="v">弘大 · 麻浦</div>
+      <div class="s">近弘大入口站</div>
+    </div>
+    <div class="fact">
+      <div class="k">主要活動區</div>
+      <div class="v">6 個區</div>
+      <div class="s">以弘大為基地</div>
     </div>
   </div>
-</div>
 
-<div class="section">
-  <h2><span class="dot" style="background:var(--med)"></span>天氣與穿搭</h2>
-  <div class="weather-row">
+  <!-- SIGNATURE: ROUTE DIAGRAM -->
+  <section class="section" id="regions">
+    <div class="sec-head">
+      <h2>這次會去哪些區域</h2>
+      <p>依照目前候選清單整理。弘大是住宿與出發點，其餘區域像地鐵沿線的下一站。</p>
+    </div>
+
+    <div class="route">
+      <a class="stop" href="vote.html">
+        <span class="node home" style="border-color:var(--l2)">🏠</span>
+        <span class="name">麻浦區 · 弘大
+          <span class="count" style="background:var(--l2)">14 個地點</span>
+        </span>
+        <span class="desc">住宿基地。晚餐、宵夜、咖啡與小店都在走路範圍內，回家最方便。</span>
+      </a>
+
+      <a class="stop" href="vote.html">
+        <span class="node" style="border-color:var(--l3)"></span>
+        <span class="name">城東區 · 聖水洞
+          <span class="count" style="background:var(--l3)">5 個地點</span>
+        </span>
+        <span class="desc">老工廠改建的咖啡廳與購物一次滿足，適合安排整個下午。</span>
+      </a>
+
+      <a class="stop" href="vote.html">
+        <span class="node" style="border-color:var(--l1)"></span>
+        <span class="name">鐘路區
+          <span class="count" style="background:var(--l1)">4 個地點</span>
+        </span>
+        <span class="desc">老城區與西村一帶，可順路走清溪川。</span>
+      </a>
+
+      <a class="stop" href="vote.html">
+        <span class="node" style="border-color:var(--plum)"></span>
+        <span class="name">江南區 · 新沙
+          <span class="count" style="background:var(--plum)">3 個地點</span>
+        </span>
+        <span class="desc">精品咖啡集中，離其他區較遠，建議單獨排半天。</span>
+      </a>
+
+      <a class="stop" href="vote.html">
+        <span class="node" style="border-color:var(--l6)"></span>
+        <span class="name">龍山區
+          <span class="count" style="background:var(--l6)">2 個地點</span>
+        </span>
+        <span class="desc">解放村與老街區，適合傍晚散步。</span>
+      </a>
+
+      <a class="stop" href="vote.html">
+        <span class="node" style="border-color:var(--ink-soft)"></span>
+        <span class="name">西大門區 · 中區
+          <span class="count" style="background:var(--ink-soft)">各 1 個</span>
+        </span>
+        <span class="desc">單點，可視當天路線順路安排。</span>
+      </a>
+
+      <div class="route-foot">
+        另有 4 個地點尚未標註區域（含 10/22 的醫美診所），補上後會一併出現在這裡。
+      </div>
+    </div>
+  </section>
+
+  <!-- MAP -->
+  <section class="section">
+    <div class="sec-head">
+      <h2>區域位置圖</h2>
+      <p>圓點是各區大致位置，房子是住宿。點圓點看該區說明。</p>
+    </div>
+    <div id="map"></div>
+  </section>
+
+  <!-- 住宿 -->
+  <section class="section">
+    <div class="sec-head"><h2>住宿</h2></div>
     <div class="card">
-      <div class="temp">15–20°</div>
-      <div class="lbl">白天</div>
+      <div class="k">飯店</div>
+      <div class="v"><strong>On Stay - Hotel Quality Stay</strong></div>
+      <div class="k">房型</div>
+      <div class="v">公寓式住宿，附廚房與客廳，一家人可住在一起。</div>
+      <div class="k">位置</div>
+      <div class="v">弘大入口站附近，步行約 800 公尺（約 10 分鐘）。走出門就是這趟最多候選地點的區域。</div>
+      <a class="btn" href="https://www.booking.com/Share-GoEkXt" target="_blank" rel="noopener">訂房資訊</a>
+      <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=On+Stay+Hotel+Quality+Stay+Seoul" target="_blank" rel="noopener">開地圖</a>
     </div>
+  </section>
+
+  <!-- 機票 -->
+  <section class="section">
+    <div class="sec-head"><h2>航班</h2></div>
+
     <div class="card">
-      <div class="temp">8–12°</div>
-      <div class="lbl">早晚</div>
+      <div class="k">去程　10/21（三）</div>
+      <div class="flight" style="margin-top:8px;">
+        <div class="port">
+          <div class="code">TPE</div>
+          <div class="time">20:00</div>
+          <div class="day">桃園 T1</div>
+        </div>
+        <div class="track"><span>約 2h30m</span></div>
+        <div class="port">
+          <div class="code">ICN</div>
+          <div class="time">23:30</div>
+          <div class="day">仁川 T1</div>
+        </div>
+      </div>
+      <div class="v" style="font-size:12px; color:var(--ink-soft); margin-top:10px;">五人同班機　座位 6B、6C（其餘座位待補）</div>
+      <div class="v" style="font-size:12px; color:var(--ink-soft);">票價 TWD 7,098（兩張）</div>
     </div>
-  </div>
-  <div class="note" style="text-align:left; padding:10px 0 0;">10 月的首爾通常是舒服的秋天氣候，早晚溫差較大，建議洋蔥式穿法、帶件薄外套。這是季節性參考，出發前記得再查一次即時預報。</div>
+
+    <div class="card">
+      <div class="k">回程　10/25（日）　IT603</div>
+      <div class="flight" style="margin-top:8px;">
+        <div class="port">
+          <div class="code">ICN</div>
+          <div class="time">00:30</div>
+          <div class="day">仁川 T1</div>
+        </div>
+        <div class="track"><span>約 1h45m</span></div>
+        <div class="port">
+          <div class="code">TPE</div>
+          <div class="time">02:15</div>
+          <div class="day">桃園 T1</div>
+        </div>
+      </div>
+      <div class="v" style="font-size:12px; color:var(--ink-soft); margin-top:10px;">五人同班機　座位 8A、8B（其餘座位待補）</div>
+      <div class="v" style="font-size:12px; color:var(--ink-soft);">票價 TWD 7,028（兩張）</div>
+
+      <div class="alertbox">
+        <b>回程是凌晨班機。</b>10/25 00:30 起飛，代表 <b>10/24 晚上</b>就要離開飯店前往機場，不是隔天早上。當天請預留退房寄放行李與交通時間。
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="k">抵達當晚怎麼去住宿</div>
+      <div class="v" style="margin-bottom:4px;">班機 23:30 落地，通過證照查驗與提領行李後，實際出關大約已近午夜。五人同班機抵達，加上行李，交通已決定採包車。</div>
+
+      <div class="opt">
+        <div class="top">
+          <span class="nm">包車接送</span>
+          <span class="tag" style="background:var(--l2)">已決定</span>
+        </div>
+        <div class="why">事先預約，司機在入境大廳舉牌等候，一台廂型車坐得下五人與行李，直接送到住宿樓下。深夜抵達、帶長輩和小孩最省事，價格也事先講定。<strong>車行與費用洽詢中，確定後會補上聯絡方式與預約編號。</strong></div>
+      </div>
+
+      <div class="opt">
+        <div class="top">
+          <span class="nm">大型計程車</span>
+          <span class="tag" style="background:var(--ink-soft)">備案</span>
+        </div>
+        <div class="why">現場排隊即可，不必預約。但一般計程車限乘四人，五人得叫大型車或拆成兩台；深夜時段有加成，另計過路費。</div>
+      </div>
+
+      <div class="opt">
+        <div class="top">
+          <span class="nm">深夜機場巴士</span>
+          <span class="tag" style="background:var(--ink-soft)">備案</span>
+        </div>
+        <div class="why">最省錢，但深夜班距長，下車後通常還要走一段或再轉車。帶大件行李、又是深夜，對長輩比較吃力。發車時間需另行確認。</div>
+      </div>
+
+      <div class="opt dim">
+        <div class="top">
+          <span class="nm">機場鐵路 A'REX</span>
+          <span class="tag" style="background:#B9B2A6">這晚不適用</span>
+        </div>
+        <div class="why">平常從機場直達弘大入口很方便，但末班車約在午夜前後發車，23:30 落地很可能趕不上。留給回程或其他天使用。</div>
+      </div>
+
+      <div class="v" style="font-size:12px; color:var(--ink-soft); margin-top:12px;">五人搭乘同一班機，行程一致。其餘三人的座位與票價待補。</div>
+    </div>
+  </section>
+
+  <!-- 實用資訊 -->
+  <section class="section">
+    <div class="sec-head">
+      <h2>實用資訊</h2>
+      <p>出發前掃一遍就好，旅途中隨時可以翻回來看。</p>
+    </div>
+
+    <div class="info-grid">
+
+      <div class="info">
+        <h3><span class="ic">🚇</span>這趟會搭到的線</h3>
+        <div class="metro-row">
+          <span class="metro-chip wide" style="background:var(--arex)">A'REX</span>
+          <span>機場鐵路｜仁川機場 ↔ 弘大入口，不用換車</span>
+        </div>
+        <div class="metro-row">
+          <span class="metro-chip" style="background:var(--l2)">2</span>
+          <span>綠線｜弘大 ↔ 聖水，主力路線</span>
+        </div>
+        <div class="metro-row">
+          <span class="metro-chip" style="background:var(--l3)">3</span>
+          <span>橘線｜往新沙洞</span>
+        </div>
+        <div class="metro-row">
+          <span class="metro-chip" style="background:var(--l1)">1</span>
+          <span>深藍線｜往鐘路、市中心</span>
+        </div>
+        <div class="note">首爾地鐵以顏色分線，車站與月台都用同一套色標示。這個 App 的區域顏色也照同一邏輯，看到色塊就知道大概在哪一區。</div>
+      </div>
+
+      <div class="info">
+        <h3><span class="ic">🍂</span>天氣與穿搭</h3>
+        <div class="row"><span class="lbl">白天</span><span class="val">約 15–20°C</span></div>
+        <div class="row"><span class="lbl">早晚</span><span class="val">約 8–12°C</span></div>
+        <div class="note">10 月是舒服的秋天，但早晚溫差明顯。建議洋蔥式穿法，外加一件擋風的薄外套。這是季節性參考，出發前請再查即時預報。</div>
+      </div>
+
+      <div class="info">
+        <h3><span class="ic">💳</span>付款方式</h3>
+        <div class="row"><span class="lbl">永豐幣倍卡</span><span class="val">6%　至 2026/12/31</span></div>
+        <div class="row"><span class="lbl">台新 Richart 卡</span><span class="val">5.3%　至 2027/3/1</span></div>
+        <div class="note">韓國店家普遍可刷卡，Visa 與 Mastercard 都通用。以上為出發時仍在效期內的回饋，條件與額度常有變動，出發前請到銀行官網確認。傳統市場與小攤仍建議帶些現金。</div>
+      </div>
+
+      <div class="info">
+        <h3><span class="ic">🆘</span>緊急聯絡</h3>
+        <div class="row"><span class="lbl">報警</span><span class="val tel">112</span></div>
+        <div class="row"><span class="lbl">救護車 · 消防</span><span class="val tel">119</span></div>
+        <div class="row"><span class="lbl">觀光諮詢（含中文）</span><span class="val tel">1330</span></div>
+        <div class="note">1330 為 24 小時多語言服務，迷路、找店家、臨時狀況都可以打。</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER CTA -->
+  <nav class="footer-cta" aria-label="功能入口">
+    <div class="grid">
+      <a href="vote.html"><span class="ic">🗳️</span><span class="tx">投票</span></a>
+      <a href="itinerary.html"><span class="ic">🗺️</span><span class="tx">行程</span></a>
+      <a href="expenses.html"><span class="ic">💰</span><span class="tx">花費</span></a>
+      <a href="todo.html"><span class="ic">📋</span><span class="tx">待辦</span></a>
+    </div>
+    <p class="colophon">2026.10.21 – 10.25　首爾　四大一小</p>
+  </nav>
+
 </div>
 
-<div class="section">
-  <h2><span class="dot" style="background:var(--shop)"></span>支付方式</h2>
-  <div class="card">
-    <div class="val">韓國實體店家刷卡很普遍，Visa／Mastercard 都通用，出發前可留意信用卡的海外刷卡回饋，出發時效期內的兩張參考：</div>
-    <div class="subway-legend">
-      <div class="row"><span class="chip" style="background:var(--ink)">6%</span> 永豐幣倍卡（單期可刷 20,000 元，優惠至 2026/12/31）</div>
-      <div class="row"><span class="chip" style="background:var(--ink)">5.3%</span> 台新 Richart 卡（單月可刷 300,000 元，優惠至 2027/3/1）</div>
-    </div>
-    <div class="note" style="text-align:left; padding:10px 0 0;">信用卡回饋活動常變動、也有申請門檻，出發前建議自行到銀行官網核對最新條件與額度。也建議準備一些現金備用，部分小店或市場攤位不收卡。</div>
-  </div>
-</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var HOTEL = { lat:37.5572, lng:126.9254 };
 
-<div class="section">
-  <h2><span class="dot" style="background:#C0392B"></span>緊急資訊</h2>
-  <div class="emergency-grid">
-    <div class="emergency-row">
-      <div>
-        <div class="what">報警</div>
-        <div class="sub">遇到緊急狀況、需要警察協助</div>
-      </div>
-      <div class="num">112</div>
-    </div>
-    <div class="emergency-row">
-      <div>
-        <div class="what">救護車／消防</div>
-        <div class="sub">受傷、生病、火警</div>
-      </div>
-      <div class="num">119</div>
-    </div>
-    <div class="emergency-row">
-      <div>
-        <div class="what">觀光諮詢熱線</div>
-        <div class="sub">24 小時多語言，含中文</div>
-      </div>
-      <div class="num">1330</div>
-    </div>
-  </div>
-</div>
+  var REGIONS = [
+    { name:'麻浦區 · 弘大', lat:37.5563, lng:126.9236, n:14, color:'#00A650', desc:'住宿基地。美食、咖啡、小店集中。' },
+    { name:'城東區 · 聖水洞', lat:37.5445, lng:127.0557, n:5,  color:'#FF7E00', desc:'老工廠咖啡廳與購物。' },
+    { name:'鐘路區',        lat:37.5735, lng:126.9790, n:4,  color:'#0052A4', desc:'老城區、西村、清溪川。' },
+    { name:'江南區 · 新沙',  lat:37.5205, lng:127.0230, n:3,  color:'#A0498B', desc:'精品咖啡集中。' },
+    { name:'龍山區',        lat:37.5384, lng:126.9654, n:2,  color:'#CD7C2F', desc:'解放村、老街區。' },
+    { name:'西大門區',      lat:37.5791, lng:126.9368, n:1,  color:'#6B6560', desc:'單點。' },
+    { name:'中區',          lat:37.5636, lng:126.9976, n:1,  color:'#6B6560', desc:'單點。' }
+  ];
 
-<div class="cta-row">
-  <a href="vote.html">🗳️ 看投票清單</a>
-  <a href="itinerary.html">🗺️ 看行程表</a>
-  <a href="expenses.html">💰 看花費記錄</a>
-</div>
+  var el = document.getElementById('map');
+  if (!el || typeof L === 'undefined') return;
+
+  var map = L.map(el, { scrollWheelZoom:false }).setView([37.5540, 126.9800], 11.4);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  REGIONS.forEach(function(r){
+    var size = 14 + Math.min(r.n, 14) * 1.1;
+    var icon = L.divIcon({
+      className: 'pin-label',
+      html: '<div class="pin-dot" style="background:'+r.color+'; width:'+size+'px; height:'+size+'px;"></div>',
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+    L.marker([r.lat, r.lng], { icon:icon, title:r.name })
+     .addTo(map)
+     .bindPopup('<strong>'+r.name+'</strong><br>'+r.n+' 個候選地點<br>'+r.desc);
+  });
+
+  var homeIcon = L.divIcon({
+    className: 'pin-label',
+    html: '<div class="pin-home">🏠</div>',
+    iconSize: [30,30],
+    iconAnchor: [15,15]
+  });
+  L.marker([HOTEL.lat, HOTEL.lng], { icon:homeIcon, title:'住宿' })
+   .addTo(map)
+   .bindPopup('<strong>住宿</strong><br>On Stay - Hotel Quality Stay<br>弘大入口站附近（位置為概略標示）');
+
+  var bounds = L.latLngBounds(REGIONS.map(function(r){ return [r.lat, r.lng]; }));
+  bounds.extend([HOTEL.lat, HOTEL.lng]);
+  map.fitBounds(bounds, { padding:[36,36] });
+})();
+</script>
 
 </body>
 </html>
