@@ -47,6 +47,13 @@
   .debt .arrow{color:var(--ink-soft);}
   .debt .amt{margin-left:auto;font-family:'Noto Serif TC',serif;font-weight:900;font-size:15px;}
   .settle .clear{font-size:12.5px;color:var(--l2);font-weight:700;padding:8px 0 2px;}
+  .settle .actions{display:flex;gap:8px;margin-top:12px;}
+  .settle .actions button{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--ink);}
+  .paidlog{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;}
+  .paidlog .h{font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:0.08em;margin-bottom:6px;}
+  .paidlog .r{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);padding:5px 0;cursor:pointer;}
+  .paidlog .r .amt2{margin-left:auto;font-weight:700;color:var(--ink);}
+  .paidlog .r:hover{color:var(--ink);}
 
   .list{padding:20px 16px 0;display:flex;flex-direction:column;gap:9px;}
   .day-label{font-size:11.5px;font-weight:700;color:var(--ink-soft);padding:6px 4px 0;letter-spacing:0.04em;}
@@ -124,7 +131,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const CATS=['吃飯','咖啡','購物','交通','住宿','醫美','門票','其他'];
 const MOODS=['😍','😊','😐','😣','😱'];
 
-let rows=[], members=[], me=localStorage.getItem('member_id')||'';
+let rows=[], members=[], pays=[], me=localStorage.getItem('member_id')||'';
 
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Number(n||0).toLocaleString('zh-Hant',{maximumFractionDigits:0});
@@ -132,13 +139,15 @@ const mName=id=>{const m=members.find(x=>String(x.id)===String(id));return m?m.n
 
 async function load(){
   try{
-    const [mRes,eRes]=await Promise.all([
+    const [mRes,eRes,sRes]=await Promise.all([
       sb.from('members').select('*').order('sort_order'),
-      sb.from('expenses').select('*').order('created_at',{ascending:false})
+      sb.from('expenses').select('*').order('created_at',{ascending:false}),
+      sb.from('settlements').select('*').order('created_at',{ascending:false})
     ]);
     if(mRes.error) throw mRes.error;
     if(eRes.error) throw eRes.error;
-    members=mRes.data||[]; rows=eRes.data||[];
+    if(sRes.error) throw sRes.error;
+    members=mRes.data||[]; rows=eRes.data||[]; pays=sRes.data||[];
     renderWho(); renderTotals(); renderSettle(); renderList();
   }catch(e){
     console.error(e);
@@ -180,44 +189,147 @@ function renderSettle(){
   const box=document.getElementById('settle');
   if(!members.length){box.innerHTML='';return;}
 
-  // 每個幣別各自結算
-  const curs=[...new Set(rows.map(r=>r.currency||'KRW'))].sort();
+  const curs=[...new Set([...rows.map(r=>r.currency||'KRW'), ...pays.map(p=>p.currency||'TWD')])].sort();
   let html='';
+
   curs.forEach(cur=>{
     const bal={};
     members.forEach(m=>bal[m.id]=0);
     let counted=0;
+
     rows.filter(r=>(r.currency||'KRW')===cur).forEach(r=>{
       const amt=Number(r.actual_amount||0);
       if(!amt||!r.paid_by_id) return;
-      const ids=(r.split_ids||'').split(',').map(s=>s.trim()).filter(Boolean);
+      const ids=(r.split_ids||'').split(',').map(x=>x.trim()).filter(Boolean);
       if(!ids.length) return;
       counted++;
       const share=amt/ids.length;
       if(bal[r.paid_by_id]!==undefined) bal[r.paid_by_id]+=amt;
       ids.forEach(id=>{ if(bal[id]!==undefined) bal[id]-=share; });
     });
+
+    const myPays=pays.filter(p=>(p.currency||'TWD')===cur);
+    myPays.forEach(p=>{
+      const amt=Number(p.amount||0);
+      if(!amt) return;
+      counted++;
+      if(bal[p.from_id]!==undefined) bal[p.from_id]+=amt;
+      if(bal[p.to_id]!==undefined) bal[p.to_id]-=amt;
+    });
+
     if(!counted) return;
 
-    const cred=members.filter(m=>bal[m.id]>0.5).map(m=>({id:m.id,name:m.name,v:bal[m.id]})).sort((a,b)=>b.v-a.v);
-    const debt=members.filter(m=>bal[m.id]<-0.5).map(m=>({id:m.id,name:m.name,v:-bal[m.id]})).sort((a,b)=>b.v-a.v);
+    const C=members.filter(m=>bal[m.id]>0.5).map(m=>({id:m.id,name:m.name,v:bal[m.id]})).sort((a,b)=>b.v-a.v);
+    const D=members.filter(m=>bal[m.id]<-0.5).map(m=>({id:m.id,name:m.name,v:-bal[m.id]})).sort((a,b)=>b.v-a.v);
 
     let lines='';
     let ci=0,di=0;
-    const C=cred.map(x=>({...x})), D=debt.map(x=>({...x}));
     while(ci<C.length&&di<D.length){
       const pay=Math.min(C[ci].v,D[di].v);
-      lines+='<div class="debt"><span class="who">'+esc(D[di].name)+'</span><span class="arrow">→</span>'+
-             '<span class="who">'+esc(C[ci].name)+'</span><span class="amt">'+esc(cur)+' '+fmt(Math.round(pay))+'</span></div>';
+      lines+='<div class="debt" data-from="'+D[di].id+'" data-to="'+C[ci].id+'" data-amt="'+Math.round(pay)+'" data-cur="'+esc(cur)+'">'+
+             '<span class="who">'+esc(D[di].name)+'</span><span class="arrow">&rarr;</span>'+
+             '<span class="who">'+esc(C[ci].name)+'</span>'+
+             '<span class="amt">'+esc(cur)+' '+fmt(Math.round(pay))+'</span></div>';
       C[ci].v-=pay; D[di].v-=pay;
       if(C[ci].v<0.5) ci++;
       if(D[di].v<0.5) di++;
     }
     if(!lines) lines='<div class="clear">'+esc(cur)+' 已經打平，不用互相給錢。</div>';
-    html+='<div class="settle"><h2>分帳結算 · '+esc(cur)+'</h2>'+
-          '<div class="sub">只計算有填「誰付的」和「誰要分」的紀錄。</div>'+lines+'</div>';
+
+    let log='';
+    if(myPays.length){
+      log='<div class="paidlog"><div class="h">已還款紀錄</div>'+
+        myPays.map(p=>'<div class="r" data-pay="'+p.id+'">'+esc(mName(p.from_id))+' &rarr; '+esc(mName(p.to_id))+
+          (p.note?'　'+esc(p.note):'')+
+          '<span class="amt2">'+esc(cur)+' '+fmt(p.amount)+'</span></div>').join('')+
+        '</div>';
+    }
+
+    html+='<div class="settle" data-cur="'+esc(cur)+'"><h2>分帳結算 · '+esc(cur)+'</h2>'+
+          '<div class="sub">支出與還款會自動抵銷，這裡顯示的是「還沒結清」的部分。</div>'+
+          lines+
+          '<div class="actions"><button class="rec" data-cur="'+esc(cur)+'">＋ 記錄一筆還款</button></div>'+
+          log+
+          '</div>';
   });
+
   box.innerHTML=html;
+
+  box.querySelectorAll('.rec').forEach(b=>b.addEventListener('click',()=>openPay(null,b.dataset.cur)));
+  box.querySelectorAll('.debt').forEach(d=>d.addEventListener('click',()=>{
+    openPay(null,d.dataset.cur,{from_id:d.dataset.from,to_id:d.dataset.to,amount:d.dataset.amt});
+  }));
+  box.querySelectorAll('.paidlog .r').forEach(r=>r.addEventListener('click',()=>{
+    const p=pays.find(x=>String(x.id)===String(r.dataset.pay));
+    if(p) openPay(p);
+  }));
+}
+
+/* ---- 還款 ---- */
+function openPay(p, defCur, pre){
+  const isNew=!p;
+  const d=p||Object.assign({from_id:'',to_id:'',amount:'',currency:defCur||'TWD',paid_on:'',note:''}, pre||{});
+  const opt=(sel)=>'<option value="">選擇</option>'+members.map(m=>'<option value="'+m.id+'"'+(String(sel)===String(m.id)?' selected':'')+'>'+esc(m.name)+'</option>').join('');
+
+  document.getElementById('modal').innerHTML=
+    '<div class="overlay"><div class="sheet">'+
+      '<div class="sheet-head"><h3>'+(isNew?'記錄還款':'編輯還款')+'</h3><button class="x" id="mx">✕</button></div>'+
+      '<div class="sheet-body">'+
+        '<div class="err" style="display:block;color:var(--ink-soft);">誰把錢還給誰。這不是花費，只是把先前墊付的錢還清。</div>'+
+        '<div class="frow">'+
+          '<div class="fg"><label>誰付錢</label><select id="p_f">'+opt(d.from_id)+'</select></div>'+
+          '<div class="fg"><label>給誰</label><select id="p_t">'+opt(d.to_id)+'</select></div>'+
+        '</div>'+
+        '<div class="frow">'+
+          '<div class="fg"><label>金額 *</label><input id="p_a" type="number" inputmode="decimal" value="'+(d.amount??'')+'"></div>'+
+          '<div class="fg"><label>幣別</label><input id="p_c" type="text" value="'+esc(d.currency||'TWD')+'"></div>'+
+        '</div>'+
+        '<div class="frow">'+
+          '<div class="fg"><label>日期</label><input id="p_d" type="date" value="'+(d.paid_on||'')+'"></div>'+
+          '<div class="fg"><label>備註</label><input id="p_n" type="text" placeholder="選填" value="'+esc(d.note||'')+'"></div>'+
+        '</div>'+
+        '<div class="err" id="p_e"></div>'+
+        '<button class="save" id="p_s">'+(isNew?'記錄':'儲存')+'</button>'+
+        (isNew?'':'<button class="del" id="p_del">刪除這筆還款</button>')+
+      '</div>'+
+    '</div></div>';
+
+  const mo=document.getElementById('modal');
+  mo.querySelector('.overlay').addEventListener('click',ev=>{if(ev.target.classList.contains('overlay'))close();});
+  document.getElementById('mx').addEventListener('click',close);
+
+  document.getElementById('p_s').addEventListener('click',async()=>{
+    const err=document.getElementById('p_e');
+    const f=document.getElementById('p_f').value, t=document.getElementById('p_t').value;
+    const a=document.getElementById('p_a').value;
+    if(!f||!t){err.textContent='請選擇付錢的人和收錢的人';err.style.display='block';return;}
+    if(f===t){err.textContent='付錢和收錢不能是同一個人';err.style.display='block';return;}
+    if(!a||Number(a)<=0){err.textContent='請填金額';err.style.display='block';return;}
+    const btn=document.getElementById('p_s'); btn.disabled=true; btn.textContent='處理中…';
+    const payload={from_id:Number(f),to_id:Number(t),amount:Number(a),
+      currency:(document.getElementById('p_c').value.trim()||'TWD').toUpperCase(),
+      paid_on:document.getElementById('p_d').value||null,
+      note:document.getElementById('p_n').value.trim()||null};
+    try{
+      const res=isNew? await sb.from('settlements').insert(payload)
+                     : await sb.from('settlements').update(payload).eq('id',p.id);
+      if(res.error) throw res.error;
+      close(); await load();
+    }catch(e){
+      console.error(e);
+      err.textContent='存不起來，請再試一次'; err.style.display='block';
+      btn.disabled=false; btn.textContent=isNew?'記錄':'儲存';
+    }
+  });
+
+  if(!isNew){
+    document.getElementById('p_del').addEventListener('click',async()=>{
+      if(!confirm('確定刪除這筆還款紀錄？'))return;
+      const {error}=await sb.from('settlements').delete().eq('id',p.id);
+      if(error){console.error(error);alert('刪不掉，請再試一次');return;}
+      close(); await load();
+    });
+  }
 }
 
 function renderList(){
