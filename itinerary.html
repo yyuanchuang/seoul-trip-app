@@ -77,7 +77,23 @@
   .daytab.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
   .daytab:active{ transform:scale(.95); }
 
-  .list{ padding:4px 16px 100px; display:flex; flex-direction:column; gap:10px; }
+  .list{ padding:4px 16px 100px; display:flex; flex-direction:column; gap:6px; }
+
+  .leg{
+    display:flex; align-items:center; justify-content:center;
+    position:relative; min-height:30px; padding:2px 0;
+  }
+  .leg::before{
+    content:''; position:absolute; left:50%; top:0; bottom:0;
+    border-left:2px dashed var(--line);
+  }
+  .leg .pill{
+    position:relative; z-index:1; background:var(--paper); border:1px solid var(--line);
+    border-radius:999px; padding:5px 12px; font-size:11.5px; font-weight:700;
+    color:var(--ink-soft); display:flex; align-items:center; gap:5px;
+    animation:fadeUp .3s ease both;
+  }
+  .leg .pill.empty{ font-weight:400; opacity:.6; }
 
   .empty-state{
     text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:13px;
@@ -324,6 +340,15 @@ function renderList(){
     const meta = CATEGORY_META[cat] || { color: 'var(--ink-soft)', label: cat || '' };
     const q = mapSearchQuery(p);
 
+    if (idx > 0) {
+      const leg = document.createElement('div');
+      leg.className = 'leg';
+      leg.innerHTML = it.transport
+        ? `<span class="pill">🚉 ${it.transport}</span>`
+        : `<span class="pill empty">交通方式未填</span>`;
+      listEl.appendChild(leg);
+    }
+
     const row = document.createElement('div');
     row.className = 'item';
     row.innerHTML = `
@@ -339,7 +364,6 @@ function renderList(){
         <div class="item-meta">
           ${it.arrival_time ? `<span>🕒 ${it.arrival_time}</span>` : ''}
           ${it.duration ? `<span>⏱ 停留 ${it.duration}</span>` : ''}
-          ${it.transport ? `<span>🚉 ${it.transport}</span>` : ''}
         </div>
         <div class="item-actions">
           <button class="editBtn">編輯</button>
