@@ -35,6 +35,11 @@
     *{animation:none !important; transition:none !important;}
   }
 
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes sheetUp{ from{opacity:0; transform:translateY(28px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes backdropIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes lockIn{ from{opacity:0;} to{opacity:1;} }
+
   nav.topnav{
     display:flex; background:var(--card); border-bottom:1px solid var(--line);
     position:sticky; top:0; z-index:500;
@@ -44,6 +49,21 @@
     text-decoration:none; color:var(--ink-soft); border-bottom:2px solid transparent;
   }
   nav.topnav a.active{ color:var(--ink); border-bottom-color:var(--ink); }
+
+  nav.jumpbar{
+    position:sticky; top:46px; z-index:400;
+    display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    background:var(--paper); padding:9px 16px; border-bottom:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  nav.jumpbar::-webkit-scrollbar{ display:none; }
+  nav.jumpbar a{
+    flex:none; font-size:12px; font-weight:700; color:var(--ink-soft);
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    padding:6px 13px; text-decoration:none; white-space:nowrap;
+    transition:transform .12s ease, background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  nav.jumpbar a:active{ background:var(--ink); color:#fff; border-color:var(--ink); transform:scale(.94); }
   nav.topnav a:focus-visible{ outline:2px solid var(--l2); outline-offset:-2px; }
 
   .wrap{ max-width:520px; margin:0 auto; }
@@ -65,10 +85,84 @@
   .facts{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:18px 16px 4px; }
   .fact{
     background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px;
+    animation:fadeUp .4s ease both;
   }
+  .facts .fact:nth-child(1){animation-delay:.04s} .facts .fact:nth-child(2){animation-delay:.08s}
+  .facts .fact:nth-child(3){animation-delay:.12s} .facts .fact:nth-child(4){animation-delay:.16s}
   .fact .k{ font-size:10.5px; letter-spacing:0.1em; color:var(--ink-soft); font-weight:700; }
   .fact .v{ font-family:'Noto Serif TC', serif; font-size:17px; font-weight:900; margin-top:3px; }
   .fact .s{ font-size:11px; color:var(--ink-soft); margin-top:1px; }
+
+
+  /* ---------- NOTICE BOARD ---------- */
+  .notice{
+    margin:16px 16px 0; background:#FFFDF6; border:1px solid #E8DCC0;
+    border-left:4px solid var(--l3); border-radius:14px; padding:14px 16px;
+    animation:fadeUp .4s ease both;
+  }
+  .notice .nh{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .notice .nh .tag{
+    font-size:10.5px; font-weight:700; letter-spacing:0.1em; color:var(--l3);
+  }
+  .notice .nh .edit{
+    margin-left:auto; background:transparent; border:1px solid var(--line);
+    border-radius:999px; width:26px; height:26px; cursor:pointer;
+    color:var(--ink-soft); font-size:12px; line-height:1; flex:none;
+    transition:transform .12s ease;
+  }
+  .notice .nh .edit:active{ transform:scale(.85); }
+  .notice .nt{ font-family:'Noto Serif TC',serif; font-size:15px; font-weight:900; margin-bottom:4px; }
+  .notice .nb{ font-size:13px; line-height:1.75; white-space:pre-wrap; }
+  .notice .nm{ font-size:11px; color:var(--ink-soft); margin-top:8px; }
+  .notice-empty{
+    margin:16px 16px 0; text-align:center;
+  }
+  .notice-empty button{
+    background:var(--card); border:1px dashed var(--line); border-radius:999px;
+    padding:9px 18px; font-size:12.5px; font-weight:700; color:var(--ink-soft);
+    cursor:pointer; font-family:'Noto Sans TC',sans-serif; transition:transform .12s ease;
+  }
+  .notice-empty button:active{ transform:scale(.95); }
+
+  /* modal */
+  .nv-overlay{
+    position:fixed; inset:0; background:rgba(28,27,26,.6);
+    display:flex; align-items:flex-end; justify-content:center; z-index:900;
+    animation:backdropIn .18s ease both;
+  }
+  .nv-sheet{
+    background:var(--paper); border-radius:20px 20px 0 0; max-width:520px; width:100%;
+    max-height:88vh; overflow-y:auto; padding:0 0 24px;
+    animation:sheetUp .32s cubic-bezier(.22,1,.36,1) both;
+  }
+  .nv-head{ padding:20px 20px 12px; display:flex; justify-content:space-between; gap:12px; }
+  .nv-head h3{ font-family:'Noto Serif TC',serif; font-size:18px; font-weight:900; margin:0; }
+  .nv-body{ padding:0 20px; }
+  .nv-body label{ display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); margin:0 0 5px; }
+  .nv-body input, .nv-body textarea{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);
+    margin-bottom:13px; box-sizing:border-box;
+  }
+  .nv-body textarea{ min-height:110px; resize:vertical; }
+  .nv-x{
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    width:30px; height:30px; flex:none; font-size:15px; cursor:pointer; color:var(--ink-soft);
+    transition:transform .12s ease;
+  }
+  .nv-x:active{ transform:scale(.88); }
+  .nv-save{
+    width:100%; padding:12px; border-radius:12px; border:none; background:var(--ink);
+    color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:transform .12s ease;
+  }
+  .nv-save:active{ transform:scale(.97); }
+  .nv-del{
+    width:100%; padding:10px; border-radius:12px; border:1px solid #EAD3CF;
+    background:#FBF2F0; color:var(--alert); font-weight:700; font-size:13px;
+    cursor:pointer; margin-top:8px; transition:transform .12s ease;
+  }
+  .nv-del:active{ transform:scale(.97); }
+  .nv-hint{ font-size:11.5px; color:var(--ink-soft); line-height:1.7; margin-bottom:12px; }
 
   /* ---------- SECTION ---------- */
   .section{ padding:28px 16px 0; }
@@ -86,7 +180,12 @@
   .stop{
     position:relative; padding:0 0 22px 34px; display:block;
     text-decoration:none; color:inherit;
+    animation:fadeUp .42s ease both; transition:opacity .12s ease;
   }
+  .stop:active{ opacity:.65; }
+  .route .stop:nth-child(1){animation-delay:.05s} .route .stop:nth-child(2){animation-delay:.12s}
+  .route .stop:nth-child(3){animation-delay:.19s} .route .stop:nth-child(4){animation-delay:.26s}
+  .route .stop:nth-child(5){animation-delay:.33s}
   .stop:last-child{ padding-bottom:6px; }
   .stop::before{
     content:''; position:absolute; left:8px; top:16px; bottom:-6px;
@@ -120,25 +219,43 @@
   /* ---------- MAP ---------- */
   #map{
     height:340px; border-radius:18px; border:1px solid var(--line);
-    background:var(--card); z-index:1;
+    background:var(--card); z-index:1; filter:sepia(6%) saturate(85%);
   }
-  .leaflet-container{ font-family:'Noto Sans TC', sans-serif; border-radius:18px; }
+  .leaflet-container{ font-family:'Noto Sans TC', sans-serif; border-radius:18px; background:var(--paper) !important; }
   .pin-label{
     background:transparent; border:none; box-shadow:none;
   }
   .pin-dot{
-    width:16px; height:16px; border-radius:999px; border:3px solid #fff;
-    box-shadow:0 1px 4px rgba(0,0,0,0.35);
+    width:16px; height:16px; border-radius:999px; border:3px solid var(--card);
+    box-shadow:0 2px 6px rgba(28,27,26,0.28);
   }
   .pin-home{
     width:30px; height:30px; border-radius:999px; background:var(--ink);
-    border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    border:3px solid var(--card); box-shadow:0 2px 6px rgba(28,27,26,0.32);
     display:flex; align-items:center; justify-content:center; font-size:14px;
+  }
+
+  /* Leaflet chrome restyled to match card design */
+  .leaflet-popup-content-wrapper{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    box-shadow:0 6px 20px rgba(28,27,26,0.18); padding:2px;
+  }
+  .leaflet-popup-content{ font-family:'Noto Sans TC',sans-serif; font-size:12.5px; color:var(--ink); line-height:1.6; margin:10px 12px; }
+  .leaflet-popup-content strong{ font-family:'Noto Serif TC',serif; font-size:13.5px; }
+  .leaflet-popup-tip{ background:var(--card); box-shadow:none; border:1px solid var(--line); }
+  .leaflet-popup-close-button{ color:var(--ink-soft) !important; }
+  .leaflet-control-zoom{ border:1px solid var(--line) !important; box-shadow:0 2px 8px rgba(28,27,26,0.12) !important; }
+  .leaflet-control-zoom a{
+    background:var(--card) !important; color:var(--ink) !important; border-color:var(--line) !important;
+  }
+  .leaflet-control-attribution{
+    background:rgba(243,238,228,0.85) !important; color:var(--ink-soft) !important; font-size:9px !important;
   }
 
   /* ---------- CARDS ---------- */
   .card{
     background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px 18px;
+    animation:fadeUp .4s ease both;
   }
   .card + .card{ margin-top:10px; }
   .card .k{ font-size:10.5px; letter-spacing:0.1em; font-weight:700; color:var(--ink-soft); }
@@ -147,7 +264,9 @@
   .btn{
     display:inline-block; margin-top:12px; font-size:13px; font-weight:700; color:#fff;
     background:var(--ink); padding:9px 16px; border-radius:10px; text-decoration:none;
+    transition:transform .12s ease;
   }
+  .btn:active{ transform:scale(.96); }
   .btn.ghost{
     background:transparent; color:var(--ink); border:1px solid var(--line); margin-left:6px;
   }
@@ -174,6 +293,12 @@
   }
   .alertbox b{ color:var(--alert); }
 
+  .addr-ko{
+    font-size:19px; font-weight:700; letter-spacing:0.01em; line-height:1.5;
+    background:var(--paper); border:1px dashed var(--line); border-radius:12px;
+    padding:14px 16px; margin-top:6px; text-align:center; user-select:all;
+  }
+
   /* ---------- OPTIONS ---------- */
   .opt{ padding:13px 0; }
   .opt + .opt{ border-top:1px solid var(--line); }
@@ -190,6 +315,7 @@
   .info-grid{ display:flex; flex-direction:column; gap:10px; }
   .info{
     background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+    animation:fadeUp .4s ease both;
   }
   .info h3{
     font-size:13.5px; font-weight:700; margin:0 0 8px;
@@ -221,7 +347,9 @@
   .footer-cta a{
     background:var(--card); border:1px solid var(--line); border-radius:16px;
     padding:16px 6px; text-align:center; text-decoration:none; color:var(--ink);
+    transition:transform .12s ease;
   }
+  .footer-cta a:active{ transform:scale(.95); }
   .footer-cta a .ic{ font-size:19px; display:block; }
   .footer-cta a .tx{ font-size:12px; font-weight:700; margin-top:5px; display:block; }
   .footer-cta a:focus-visible{ outline:2px solid var(--l2); outline-offset:2px; }
@@ -232,12 +360,55 @@
 </head>
 <body>
 
+<div id="lockScreen" style="position:fixed;inset:0;z-index:99999;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px;animation:lockIn .25s ease both;">
+  <div style="max-width:300px;width:100%;text-align:center;">
+    <div style="font-family:'Noto Serif TC',serif;font-weight:900;font-size:19px;margin-bottom:5px;color:var(--ink);">首爾家族旅行</div>
+    <div style="font-size:12.5px;color:var(--ink-soft);margin-bottom:20px;">請輸入密碼查看</div>
+    <input id="lockInput" type="password" inputmode="numeric" autocomplete="off" placeholder="密碼" style="width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);font-size:16px;text-align:center;letter-spacing:0.25em;margin-bottom:12px;box-sizing:border-box;font-family:'Noto Sans TC',sans-serif;color:var(--ink);background:var(--card);">
+    <button id="lockBtn" style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--ink);color:#fff;font-weight:700;font-size:14px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;">進入</button>
+    <div id="lockErr" style="color:#C0392B;font-size:12px;margin-top:10px;display:none;">密碼不對，再試一次</div>
+  </div>
+</div>
+<script>
+(function(){
+  var PASS = '261021';
+  var KEY = 'seoul_trip_unlocked';
+  if (localStorage.getItem(KEY) === 'yes') {
+    var el = document.getElementById('lockScreen');
+    if (el) el.remove();
+    return;
+  }
+  function tryUnlock(){
+    var v = document.getElementById('lockInput').value.trim();
+    if (v === PASS){
+      localStorage.setItem(KEY, 'yes');
+      document.getElementById('lockScreen').remove();
+    } else {
+      document.getElementById('lockErr').style.display = 'block';
+      document.getElementById('lockInput').focus();
+      document.getElementById('lockInput').select();
+    }
+  }
+  document.getElementById('lockBtn').addEventListener('click', tryUnlock);
+  document.getElementById('lockInput').addEventListener('keydown', function(e){ if(e.key==='Enter') tryUnlock(); });
+  setTimeout(function(){ var i=document.getElementById('lockInput'); if(i) i.focus(); }, 100);
+})();
+</script>
 <nav class="topnav">
   <a href="index.html" class="active">手冊</a>
   <a href="vote.html">投票</a>
   <a href="itinerary.html">行程</a>
   <a href="expenses.html">花費</a>
   <a href="todo.html">待辦</a>
+</nav>
+
+<nav class="jumpbar" aria-label="頁內快速跳轉">
+  <a href="#regions">路線</a>
+  <a href="#anchor-map">地圖</a>
+  <a href="#anchor-stay">住宿</a>
+  <a href="#anchor-flight">航班</a>
+  <a href="#anchor-entry">入境</a>
+  <a href="#anchor-info">實用</a>
 </nav>
 
 <div class="wrap">
@@ -324,6 +495,9 @@
     </div>
   </header>
 
+  <!-- NOTICE BOARD -->
+  <div id="noticeBox"></div>
+
   <!-- QUICK FACTS -->
   <div class="facts">
     <div class="fact">
@@ -352,89 +526,72 @@
   <section class="section" id="regions">
     <div class="sec-head">
       <h2>這次會去哪些區域</h2>
-      <p>依照目前候選清單整理。弘大是住宿與出發點，其餘區域像地鐵沿線的下一站。</p>
+      <p>弘大是住宿與每天的出發點。</p>
     </div>
 
     <div class="route">
-      <a class="stop" href="vote.html">
+      <a class="stop" href="itinerary.html">
         <span class="node home" style="border-color:var(--l2)">🏠</span>
         <span class="name">麻浦區 · 弘大
-          <span class="count" style="background:var(--l2)">14 個地點</span>
+          <span class="count" style="background:var(--l2)">住宿基地</span>
         </span>
-        <span class="desc">住宿基地。晚餐、宵夜、咖啡與小店都在走路範圍內，回家最方便。</span>
+        <span class="desc">10/21 深夜抵達入住。三天的晚餐都排在這一帶，走路就回得了家。</span>
       </a>
 
-      <a class="stop" href="vote.html">
-        <span class="node" style="border-color:var(--l3)"></span>
-        <span class="name">城東區 · 聖水洞
-          <span class="count" style="background:var(--l3)">5 個地點</span>
-        </span>
-        <span class="desc">老工廠改建的咖啡廳與購物一次滿足，適合安排整個下午。</span>
-      </a>
-
-      <a class="stop" href="vote.html">
-        <span class="node" style="border-color:var(--l1)"></span>
-        <span class="name">鐘路區
-          <span class="count" style="background:var(--l1)">4 個地點</span>
-        </span>
-        <span class="desc">老城區與西村一帶，可順路走清溪川。</span>
-      </a>
-
-      <a class="stop" href="vote.html">
-        <span class="node" style="border-color:var(--plum)"></span>
+      <a class="stop" href="itinerary.html">
+        <span class="node" style="border-color:var(--plum)">2</span>
         <span class="name">江南區 · 新沙
-          <span class="count" style="background:var(--plum)">3 個地點</span>
+          <span class="count" style="background:var(--plum)">Day 2</span>
         </span>
-        <span class="desc">精品咖啡集中，離其他區較遠，建議單獨排半天。</span>
+        <span class="desc">10/22　醫美診所（區域待確認）、Front Seoul、Camel Coffee，晚餐回弘大。</span>
       </a>
 
-      <a class="stop" href="vote.html">
-        <span class="node" style="border-color:var(--l6)"></span>
-        <span class="name">龍山區
-          <span class="count" style="background:var(--l6)">2 個地點</span>
+      <a class="stop" href="itinerary.html">
+        <span class="node" style="border-color:var(--l3)">3</span>
+        <span class="name">城東區 · 聖水洞
+          <span class="count" style="background:var(--l3)">Day 3</span>
         </span>
-        <span class="desc">解放村與老街區，適合傍晚散步。</span>
+        <span class="desc">10/23　Cafe Onion、musinsa、Olive Young、山竹剉冰，晚餐回弘大。</span>
       </a>
 
-      <a class="stop" href="vote.html">
-        <span class="node" style="border-color:var(--ink-soft)"></span>
-        <span class="name">西大門區 · 中區
-          <span class="count" style="background:var(--ink-soft)">各 1 個</span>
+      <a class="stop" href="itinerary.html">
+        <span class="node" style="border-color:var(--l1)">4</span>
+        <span class="name">鐘路區 · 中區
+          <span class="count" style="background:var(--l1)">Day 4</span>
         </span>
-        <span class="desc">單點，可視當天路線順路安排。</span>
+        <span class="desc">10/24　PHAL、清溪川、Raw Coffee，最後一晚回弘大吃大餐，22:00 出發去機場。</span>
       </a>
 
       <div class="route-foot">
-        另有 4 個地點尚未標註區域（含 10/22 的醫美診所），補上後會一併出現在這裡。
+        這是目前確認的行程路線，會隨行程調整持續更新。還有 19 個候選地點在<a href="vote.html" style="color:inherit;text-decoration:underline;">投票清單</a>裡，之後可以隨時加進來。
       </div>
     </div>
   </section>
 
   <!-- MAP -->
-  <section class="section">
+  <section class="section" id="anchor-map">
     <div class="sec-head">
-      <h2>區域位置圖</h2>
-      <p>圓點是各區大致位置，房子是住宿。點圓點看該區說明。</p>
+      <h2>行程路線圖</h2>
+      <p>圓點是每天的活動區域，房子是住宿。</p>
     </div>
     <div id="map"></div>
   </section>
 
   <!-- 住宿 -->
-  <section class="section">
+  <section class="section" id="anchor-stay">
     <div class="sec-head"><h2>住宿</h2></div>
     <div class="card">
       <div class="k">飯店</div>
-      <div class="v"><strong>On Stay - Hotel Quality Stay</strong>　Deluxe Villa</div>
+      <div class="v"><strong>On Stay - Hotel Quality Stay</strong>　Deluxe Villa　評分 9.6</div>
       <div class="k">地址</div>
       <div class="v">마포구 연남동 561-54, 서울, 03988（麻浦區延南洞，弘大入口站附近，步行約 800 公尺）</div>
       <div class="k">入住／退房</div>
       <div class="v">2026/10/21 入住　－　2026/10/25 退房</div>
       <div class="k">房型</div>
-      <div class="v">公寓式住宿，附獨立廚房與客廳，一家人可以住在一起，不用分房。</div>
-      <div class="k">已包含</div>
-      <div class="v">免費 Wi-Fi、免費停車、飲用水、咖啡／茶</div>
-      <a class="btn" href="https://www.booking.com/Share-GoEkXt" target="_blank" rel="noopener">訂房資訊</a>
-      <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=마포구+연남동+561-54+서울" target="_blank" rel="noopener">開地圖</a>
+      <div class="v">公寓式住宿，全面禁菸，獨立廚房、客廳與陽台，一家人可以住在一起，不用分房。</div>
+      <a class="btn" href="https://www.google.com/maps/search/?api=1&query=37.561528,126.921" target="_blank" rel="noopener">用地圖導航</a>
+      <a class="btn ghost" href="https://map.naver.com/p/search/마포구%20연남동%20561-54" target="_blank" rel="noopener">Naver 地圖</a>
+      <a class="btn ghost" href="https://www.booking.com/Share-GoEkXt" target="_blank" rel="noopener">訂房資訊</a>
 
       <div class="alertbox">
         <b>本訂單不可退款。</b>完成後不能修改或取消，未入住須支付全額。行程日期已經固定，請提前跟家人確認好。
@@ -442,14 +599,43 @@
     </div>
 
     <div class="card">
+      <div class="k">門鎖密碼與入住指南</div>
+      <div class="v">住宿方會在入住前提供門鎖密碼。入住前 72 小時可以開啟下方的 Agoda 入住指南查看，最新消息也會更新在本頁最上方。</div>
+      <a class="btn" href="https://www.agoda.com/zh-tw/v2/homes/arrival-guide/1733926165" target="_blank" rel="noopener">開啟入住指南</a>
+    </div>
+
+    <div class="card">
+      <div class="k">入住時間</div>
+      <div class="v">下午 3:00 － 下午 11:00（需提前告知抵達時間）</div>
+      <div class="k">退房時間</div>
+      <div class="v">上午 8:00 － 上午 11:00</div>
+      <div class="k">安靜時段</div>
+      <div class="v">晚上 10:00 － 早上 7:00 須放低音量</div>
+    </div>
+
+    <div class="card">
+      <div class="k">迷路或搭計程車時，把這段拿給司機看</div>
+      <div class="addr-ko">서울 마포구 연남동 561-54</div>
+      <div class="v" style="font-size:12.5px; color:var(--ink-soft); margin-top:8px;">韓國計程車司機通常看韓文地址最快。上面按「用地圖導航」會直接定位到門口，不會跑到附近的別棟。</div>
+      <div class="v" style="font-size:12px; color:var(--ink-soft);">沒有網路時可以用這組座標：37.561528, 126.921000</div>
+    </div>
+
+    <div class="card">
+      <div class="k">設施一覽</div>
+      <div class="v" style="margin-bottom:2px;"><strong>廚房</strong>　冰箱、微波爐、電熱水壺、簡易爐具、餐桌、廚房清潔與烹飪用具</div>
+      <div class="v" style="margin-bottom:2px;"><strong>衛浴</strong>　毛巾、吹風機、免費盥洗用品、浴缸或淋浴間（獨立衛浴）</div>
+      <div class="v" style="margin-bottom:2px;"><strong>其他</strong>　冷氣、暖氣、陽台、花園、隔音設備、床邊插座</div>
+      <div class="v"><strong>安全設備</strong>　滅火器、煙霧偵測器、警報器、一氧化碳偵測器、24 小時警衛</div>
+    </div>
+
+    <div class="card">
       <div class="k">要自己準備的東西</div>
-      <div class="v">是公寓式住宿，不是飯店，日常補給可能不像飯店那麼齊全。建議自備：牙刷牙膏、個人慣用的盥洗用品、常備藥（腸胃藥、感冒藥、暈車藥）、拖鞋。廚房已有基本設備，若想開伙可以現場再採買食材。</div>
-      <div class="v" style="font-size:12px; color:var(--ink-soft);">以上為公寓式住宿的一般提醒，非官方提供清單，實際備品請以現場為準。</div>
+      <div class="v">毛巾、吹風機、盥洗用品、一次性牙刷住宿都有提供。建議自備：慣用的牙膏牙刷、個人保養品、常備藥（腸胃藥、感冒藥、暈車藥）。廚房設備齊全，想開伙可以現場採買食材。</div>
     </div>
   </section>
 
   <!-- 機票 -->
-  <section class="section">
+  <section class="section" id="anchor-flight">
     <div class="sec-head"><h2>航班</h2></div>
 
     <div class="card">
@@ -490,7 +676,7 @@
       <div class="v" style="font-size:12px; color:var(--ink-soft);">票價 TWD 7,028（兩張）</div>
 
       <div class="alertbox">
-        <b>回程是凌晨班機。</b>10/25 00:30 起飛，代表 <b>10/24 晚上</b>就要離開飯店前往機場，不是隔天早上。當天請預留退房寄放行李與交通時間。
+        <b>回程是凌晨班機，10/24 晚上就要出發。</b>10/25 00:30 起飛，報到櫃檯 10/24 22:00 開放、<b>23:45 關閉</b>。<b>最晚 22:30 要抵達機場</b>，從弘大到仁川機場車程約 60－70 分鐘，建議 <b>21:00 前離開住宿</b>。
       </div>
     </div>
 
@@ -530,15 +716,14 @@
         <div class="why">平常從機場直達弘大入口很方便，但末班車約在午夜前後發車，23:30 落地很可能趕不上。留給回程或其他天使用。</div>
       </div>
 
-      <div class="v" style="font-size:12px; color:var(--ink-soft); margin-top:12px;">五人搭乘同一班機，行程一致。其餘三人的座位與票價待補。</div>
     </div>
   </section>
 
   <!-- 實用資訊 -->
-  <section class="section">
+  <section class="section" id="anchor-entry">
     <div class="sec-head">
       <h2>入境與通關須知</h2>
-      <p>去程和回程各有要注意的事，出發前先看一次，現場就不會慌。</p>
+      <p>去程與回程各有規定，出發前確認一次。</p>
     </div>
 
     <div class="info-grid">
@@ -588,10 +773,10 @@
   </section>
 
   <!-- 實用資訊 -->
-  <section class="section">
+  <section class="section" id="anchor-info">
     <div class="sec-head">
       <h2>實用資訊</h2>
-      <p>出發前掃一遍就好，旅途中隨時可以翻回來看。</p>
+      
     </div>
 
     <div class="info-grid">
@@ -655,19 +840,16 @@
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-  var HOTEL = { lat:37.5602, lng:126.9227 };
+  var HOTEL = { lat:37.561528, lng:126.921000 };
 
   var REGIONS = [
-    { name:'麻浦區 · 弘大', lat:37.5563, lng:126.9236, n:14, color:'#00A650', desc:'住宿基地。美食、咖啡、小店集中。' },
-    { name:'城東區 · 聖水洞', lat:37.5445, lng:127.0557, n:5,  color:'#FF7E00', desc:'老工廠咖啡廳與購物。' },
-    { name:'鐘路區',        lat:37.5735, lng:126.9790, n:4,  color:'#0052A4', desc:'老城區、西村、清溪川。' },
-    { name:'江南區 · 新沙',  lat:37.5205, lng:127.0230, n:3,  color:'#A0498B', desc:'精品咖啡集中。' },
-    { name:'龍山區',        lat:37.5384, lng:126.9654, n:2,  color:'#CD7C2F', desc:'解放村、老街區。' },
-    { name:'西大門區',      lat:37.5791, lng:126.9368, n:1,  color:'#6B6560', desc:'單點。' },
-    { name:'中區',          lat:37.5636, lng:126.9976, n:1,  color:'#6B6560', desc:'單點。' }
+    { name:'Day 2 · 江南區 · 新沙', lat:37.5205, lng:127.0230, n:'Day 2', color:'#A0498B', desc:'醫美診所（區域待確認）、Front Seoul、Camel Coffee。' },
+    { name:'Day 3 · 城東區 · 聖水洞', lat:37.5445, lng:127.0557, n:'Day 3', color:'#FF7E00', desc:'Cafe Onion、musinsa、Olive Young、山竹剉冰。' },
+    { name:'Day 4 · 鐘路區 · 中區', lat:37.5735, lng:126.9790, n:'Day 4', color:'#0052A4', desc:'PHAL、清溪川、Raw Coffee，最後一晚回弘大大餐。' }
   ];
 
   var el = document.getElementById('map');
@@ -675,22 +857,23 @@
 
   var map = L.map(el, { scrollWheelZoom:false }).setView([37.5540, 126.9800], 11.4);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '&copy; OpenStreetMap'
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd',
+    attribution: '&copy; OpenStreetMap &copy; CARTO'
   }).addTo(map);
 
   REGIONS.forEach(function(r){
-    var size = 14 + Math.min(r.n, 14) * 1.1;
+    var size = 26;
     var icon = L.divIcon({
       className: 'pin-label',
-      html: '<div class="pin-dot" style="background:'+r.color+'; width:'+size+'px; height:'+size+'px;"></div>',
+      html: '<div class="pin-dot" style="background:'+r.color+'; width:'+size+'px; height:'+size+'px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:9px; font-weight:700; font-family:\'Noto Serif TC\',serif;">'+r.n.replace('Day ','D')+'</div>',
       iconSize: [size, size],
       iconAnchor: [size/2, size/2]
     });
     L.marker([r.lat, r.lng], { icon:icon, title:r.name })
      .addTo(map)
-     .bindPopup('<strong>'+r.name+'</strong><br>'+r.n+' 個候選地點<br>'+r.desc);
+     .bindPopup('<strong>'+r.name+'</strong><br>'+r.desc);
   });
 
   var homeIcon = L.divIcon({
@@ -706,6 +889,127 @@
   var bounds = L.latLngBounds(REGIONS.map(function(r){ return [r.lat, r.lng]; }));
   bounds.extend([HOTEL.lat, HOTEL.lng]);
   map.fitBounds(bounds, { padding:[36,36] });
+})();
+</script>
+
+<div id="nvModal"></div>
+
+<script>
+/* ---------- 最新消息（可用手機更新） ---------- */
+(function(){
+  var URL_='https://vmalwtagpcxvxocsopvi.supabase.co';
+  var KEY_='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtYWx3dGFncGN4dnhvY3NvcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4ODA1NTUsImV4cCI6MjEwMTQ1NjU1NX0.dXmudSH8rMmIYw3g0FgmcunBjsaAmyOULQLa9qWrR74';
+  if (typeof supabase === 'undefined') return;
+  var sb = supabase.createClient(URL_, KEY_);
+  var box = document.getElementById('noticeBox');
+  if (!box) return;
+
+  var current = null;
+
+  function esc(t){
+    return String(t==null?'':t).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function fmtTime(t){
+    if(!t) return '';
+    try{
+      var d=new Date(t);
+      return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    }catch(e){ return ''; }
+  }
+
+  function render(){
+    if(!current){
+      box.innerHTML = '<div class="notice-empty"><button id="nvAdd">＋ 張貼一則給大家的消息</button></div>';
+      var a=document.getElementById('nvAdd');
+      if(a) a.addEventListener('click', function(){ openEdit(null); });
+      return;
+    }
+    box.innerHTML =
+      '<div class="notice">' +
+        '<div class="nh"><span class="tag">最新消息</span>' +
+        '<button class="edit" id="nvEdit" aria-label="編輯消息">✎</button></div>' +
+        (current.title ? '<div class="nt">'+esc(current.title)+'</div>' : '') +
+        '<div class="nb">'+esc(current.body)+'</div>' +
+        '<div class="nm">' + (current.updated_by ? esc(current.updated_by)+'　' : '') + fmtTime(current.updated_at) + ' 更新</div>' +
+      '</div>';
+    var e=document.getElementById('nvEdit');
+    if(e) e.addEventListener('click', function(){ openEdit(current); });
+  }
+
+  function openEdit(n){
+    var isNew = !n;
+    var d = n || { title:'', body:'', updated_by:'' };
+    document.getElementById('nvModal').innerHTML =
+      '<div class="nv-overlay"><div class="nv-sheet">' +
+        '<div class="nv-head"><h3>' + (isNew?'張貼消息':'更新消息') + '</h3>' +
+        '<button class="nv-x" id="nvClose">✕</button></div>' +
+        '<div class="nv-body">' +
+          '<div class="nv-hint">這則消息全家人打開手冊就看得到，手機也可以直接更新。網址是公開的，密碼之類的資訊請斟酌是否張貼。</div>' +
+          '<label>標題</label><input id="nvT" type="text" placeholder="例如：入住密碼" value="'+esc(d.title)+'">' +
+          '<label>內容</label><textarea id="nvB" placeholder="想告訴大家的事">'+esc(d.body)+'</textarea>' +
+          '<label>你是誰</label><input id="nvU" type="text" placeholder="選填" value="'+esc(d.updated_by)+'">' +
+          '<div class="nv-hint" id="nvErr" style="color:var(--alert); display:none;"></div>' +
+          '<button class="nv-save" id="nvSave">' + (isNew?'張貼':'儲存') + '</button>' +
+          (isNew?'':'<button class="nv-del" id="nvDel">刪除這則消息</button>') +
+        '</div>' +
+      '</div></div>';
+
+    var m=document.getElementById('nvModal');
+    m.querySelector('.nv-overlay').addEventListener('click', function(ev){
+      if(ev.target.classList.contains('nv-overlay')) close();
+    });
+    document.getElementById('nvClose').addEventListener('click', close);
+
+    document.getElementById('nvSave').addEventListener('click', async function(){
+      var body=document.getElementById('nvB').value.trim();
+      var err=document.getElementById('nvErr');
+      if(!body){ err.textContent='請填內容'; err.style.display='block'; return; }
+      var btn=this; btn.disabled=true; btn.textContent='處理中…';
+      var payload={
+        title:document.getElementById('nvT').value.trim()||null,
+        body:body,
+        updated_by:document.getElementById('nvU').value.trim()||null,
+        updated_at:new Date().toISOString()
+      };
+      try{
+        var res = isNew ? await sb.from('notices').insert(payload)
+                        : await sb.from('notices').update(payload).eq('id', n.id);
+        if(res.error) throw res.error;
+        close(); await load();
+      }catch(e){
+        console.error(e);
+        err.textContent='存不起來，請再試一次'; err.style.display='block';
+        btn.disabled=false; btn.textContent=isNew?'張貼':'儲存';
+      }
+    });
+
+    if(!isNew){
+      document.getElementById('nvDel').addEventListener('click', async function(){
+        if(!confirm('確定刪除這則消息？')) return;
+        var r = await sb.from('notices').delete().eq('id', n.id);
+        if(r.error){ console.error(r.error); alert('刪不掉，請再試一次'); return; }
+        close(); await load();
+      });
+    }
+  }
+  function close(){ document.getElementById('nvModal').innerHTML=''; }
+
+  async function load(){
+    try{
+      var r = await sb.from('notices').select('*').order('updated_at',{ascending:false}).limit(1);
+      if(r.error) throw r.error;
+      current = (r.data && r.data.length) ? r.data[0] : null;
+      render();
+    }catch(e){
+      console.warn('notices 尚未建立或讀取失敗', e);
+      box.innerHTML='';
+    }
+  }
+
+  load();
 })();
 </script>
 
