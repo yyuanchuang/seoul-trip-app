@@ -79,6 +79,17 @@
 
   .list{ padding:4px 16px 100px; display:flex; flex-direction:column; gap:6px; }
 
+  .navcta{ padding:0 16px 14px; }
+  .navcta a{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:13px; border-radius:14px; border:none;
+    background:linear-gradient(135deg, var(--ink) 0%, #33312E 100%);
+    color:#fff; font-weight:700; font-size:14px; text-decoration:none;
+    box-sizing:border-box; box-shadow:0 3px 10px rgba(28,27,26,.18);
+    transition:transform .12s ease;
+  }
+  .navcta a:active{ transform:scale(.98); }
+
   .leg{
     display:flex; align-items:center; justify-content:center;
     position:relative; min-height:30px; padding:2px 0;
@@ -104,7 +115,28 @@
     display:flex; align-items:stretch; gap:10px; border:1px solid var(--line);
     box-shadow:0 1px 2px rgba(28,27,26,0.04);
     animation:fadeUp .38s ease both;
+    transition:border-color .2s ease, box-shadow .2s ease;
   }
+  .item.current{
+    border-color:var(--l4); border-width:2px; padding:13px 13px 13px 0;
+    box-shadow:0 3px 12px rgba(0,165,222,0.18);
+  }
+  .badge-row{ display:flex; gap:6px; margin-bottom:4px; }
+  .badge{
+    font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    display:inline-block;
+  }
+  .badge-current{ background:var(--l4); color:#fff; }
+  .badge-next{ background:var(--paper); color:var(--ink-soft); border:1px solid var(--line); }
+
+  .nownav{ padding:0 16px 10px; }
+  .nownav button{
+    width:100%; padding:10px; border-radius:12px; border:1px dashed var(--l4);
+    background:#EAF8FD; color:var(--l4); font-weight:700; font-size:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    transition:transform .12s ease;
+  }
+  .nownav button:active{ transform:scale(.97); }
   .list .item:nth-child(1){animation-delay:.02s} .list .item:nth-child(2){animation-delay:.06s}
   .list .item:nth-child(3){animation-delay:.1s} .list .item:nth-child(4){animation-delay:.14s}
   .list .item:nth-child(5){animation-delay:.18s} .list .item:nth-child(n+6){animation-delay:.22s}
@@ -124,6 +156,13 @@
   .item-body .name{ font-weight:700; font-size:15px; margin:0 0 4px; }
   .item-meta{ display:flex; flex-wrap:wrap; gap:6px; font-size:11.5px; color:var(--ink-soft); margin-bottom:8px; }
   .item-meta span{ display:inline-flex; align-items:center; gap:3px; }
+
+  .tip{
+    background:#FBF3DE; border:1px solid #EEDFB0; border-radius:10px;
+    padding:9px 11px; margin-bottom:10px; font-size:12.5px; line-height:1.65; color:#6B5A2A;
+    display:flex; gap:7px; align-items:flex-start;
+  }
+  .tip .ic{ flex:none; font-size:13px; }
   .item-actions{ display:flex; gap:8px; }
   .item-actions button, .item-actions a{
     font-size:12px; font-weight:700; padding:6px 10px; border-radius:8px; border:1px solid var(--line);
@@ -248,6 +287,8 @@
 </header>
 
 <div class="daytabs" id="dayTabs"></div>
+<div id="nowNav"></div>
+<div id="dayNav"></div>
 <div class="list" id="list"><div class="loading">載入中...</div></div>
 
 <button class="fab" id="fabAdd">＋</button>
@@ -280,6 +321,22 @@ let currentDay = 1;
 let places = [];
 let itinerary = [];
 
+// 韓國固定用 UTC+9 計算，不管看的人手機時區在哪，結果都一致
+function tripDayNumber(){
+  const day1StartMs = TRIP_START.getTime() - 9 * 3600000; // 10/21 00:00 KST
+  return Math.floor((Date.now() - day1StartMs) / 86400000) + 1;
+}
+function kstMinutesNow(){
+  const kstMs = Date.now() + 9 * 3600000;
+  const d = new Date(kstMs);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+function timeToMinutes(hhmm){
+  const m = /^(\d{1,2}):(\d{2})/.exec((hhmm || '').trim());
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+}
+
 function dayLabel(dayNum){
   const d = new Date(TRIP_START);
   d.setDate(d.getDate() + (dayNum - 1));
@@ -289,6 +346,8 @@ function dayLabel(dayNum){
 function mapSearchQuery(p){
   return encodeURIComponent(`${p?.名稱 || ''} ${p?.地址 || ''}`.trim());
 }
+
+let didInitialJump = false;
 
 async function loadData(){
   const listEl = document.getElementById('list');
@@ -301,12 +360,45 @@ async function loadData(){
     if (iErr) throw iErr;
     places = placesData || [];
     itinerary = itinData || [];
+
+    if (!didInitialJump){
+      didInitialJump = true;
+      const real = tripDayNumber();
+      if (real >= 1 && real <= DAY_COUNT) currentDay = real;
+    }
+
     renderDayTabs();
     renderList();
+    renderDayNav();
+    renderNowNav();
   } catch (e) {
     console.error(e);
     listEl.innerHTML = `<div class="empty-state">載入失敗：${e.message || '請稍後再試'}</div>`;
   }
+}
+
+function renderNowNav(){
+  const wrap = document.getElementById('nowNav');
+  const real = tripDayNumber();
+  if (real < 1 || real > DAY_COUNT){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `<div class="nownav"><button id="jumpNow">📍 回到目前行程（Day ${real}）</button></div>`;
+  document.getElementById('jumpNow').addEventListener('click', () => {
+    currentDay = real;
+    renderDayTabs();
+    renderList();
+    renderDayNav();
+    setTimeout(() => {
+      const items = itemsForDay(real);
+      const nowMin = kstMinutesNow();
+      let idx = -1;
+      items.forEach((it, i) => { const t = timeToMinutes(it.arrival_time); if (t !== null && t <= nowMin) idx = i; });
+      const target = items[idx > -1 ? idx : 0];
+      if (target){
+        const el = document.querySelector(`[data-itin-id="${target.id}"]`);
+        if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+      }
+    }, 60);
+  });
 }
 
 function renderDayTabs(){
@@ -317,13 +409,39 @@ function renderDayTabs(){
     const btn = document.createElement('button');
     btn.className = 'daytab' + (d === currentDay ? ' active' : '');
     btn.innerHTML = `Day ${d}<span class="d">${info.m}/${info.day} (${info.w})</span>`;
-    btn.addEventListener('click', () => { currentDay = d; renderDayTabs(); renderList(); });
+    btn.addEventListener('click', () => { currentDay = d; renderDayTabs(); renderList(); renderDayNav(); });
     wrap.appendChild(btn);
   }
 }
 
 function itemsForDay(d){
   return itinerary.filter(i => i.day === d).sort((a,b) => a.sort_order - b.sort_order);
+}
+
+function buildDayRouteUrl(items){
+  const stops = items
+    .map(it => it.places || {})
+    .filter(p => p.名稱)
+    .map(p => mapSearchQuery(p));
+  if (stops.length < 2) return null;
+  const origin = stops[0];
+  const destination = stops[stops.length - 1];
+  const waypoints = stops.slice(1, -1);
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+  if (waypoints.length) url += `&waypoints=${waypoints.join('|')}`;
+  return url;
+}
+
+function renderDayNav(){
+  const wrap = document.getElementById('dayNav');
+  const items = itemsForDay(currentDay);
+  const url = buildDayRouteUrl(items);
+  if (!url){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `
+    <div class="navcta">
+      <a href="${url}" target="_blank" rel="noopener">🧭 開啟今天整條導航路線</a>
+    </div>
+  `;
 }
 
 function renderList(){
@@ -333,6 +451,19 @@ function renderList(){
     listEl.innerHTML = `<div class="empty-state">這天還沒排行程，點右下角「＋」加入地點</div>`;
     return;
   }
+
+  // 只在「今天真的是這一天」時才判斷目前站/下一站
+  let currentIdx = -1, nextIdx = -1;
+  if (tripDayNumber() === currentDay){
+    const nowMin = kstMinutesNow();
+    items.forEach((it, i) => {
+      const t = timeToMinutes(it.arrival_time);
+      if (t !== null && t <= nowMin) currentIdx = i;
+    });
+    if (currentIdx > -1 && currentIdx < items.length - 1) nextIdx = currentIdx + 1;
+    if (currentIdx === -1 && items.some(it => timeToMinutes(it.arrival_time) !== null)) nextIdx = 0;
+  }
+
   listEl.innerHTML = '';
   items.forEach((it, idx) => {
     const p = it.places || {};
@@ -349,8 +480,12 @@ function renderList(){
       listEl.appendChild(leg);
     }
 
+    const isCurrent = idx === currentIdx;
+    const isNext = idx === nextIdx;
+
     const row = document.createElement('div');
-    row.className = 'item';
+    row.className = 'item' + (isCurrent ? ' current' : '');
+    row.dataset.itinId = it.id;
     row.innerHTML = `
       <div class="stripe" style="background:${meta.color}"></div>
       <div class="reorder">
@@ -361,10 +496,12 @@ function renderList(){
         <div class="item-top">
           <p class="name">${p.名稱 || '（地點已刪除）'}</p>
         </div>
+        ${isCurrent || isNext ? `<div class="badge-row">${isCurrent ? `<span class="badge badge-current">目前行程</span>` : `<span class="badge badge-next">下一站</span>`}</div>` : ''}
         <div class="item-meta">
           ${it.arrival_time ? `<span>🕒 ${it.arrival_time}</span>` : ''}
           ${it.duration ? `<span>⏱ 停留 ${it.duration}</span>` : ''}
         </div>
+        ${it.notes ? `<div class="tip"><span class="ic">💡</span><span>${it.notes}</span></div>` : ''}
         <div class="item-actions">
           <button class="editBtn">編輯</button>
           <a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Google地圖</a>
@@ -431,8 +568,8 @@ function openEdit(it, p, meta){
             <input id="e_transport" type="text" placeholder="例如：步行 10 分鐘 / 搭地鐵 2 號線" value="${it.transport || ''}">
           </div>
           <div class="form-group">
-            <label>備註</label>
-            <textarea id="e_notes" placeholder="例如：先買門票">${it.notes || ''}</textarea>
+            <label>小提醒（會顯示成提示框）</label>
+            <textarea id="e_notes" placeholder="例如：入口有廁所、記得先買門票、退潮時招潮蟹最多">${it.notes || ''}</textarea>
           </div>
           <button class="form-submit" id="e_save">儲存</button>
         </div>
