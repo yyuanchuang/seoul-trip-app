@@ -366,6 +366,11 @@ function tripDayNumber(){
   const day1StartMs = TRIP_START.getTime() - 9 * 3600000; // 10/21 00:00 KST
   return Math.floor((Date.now() - day1StartMs) / 86400000) + 1;
 }
+// Day5 的內容已經併入 Day4（回程班機同一天），所以「現在該看哪天」要對應過去
+function effectiveTripDay(){
+  const real = tripDayNumber();
+  return real === 5 ? 4 : real;
+}
 function kstMinutesNow(){
   const kstMs = Date.now() + 9 * 3600000;
   const d = new Date(kstMs);
@@ -403,7 +408,7 @@ async function loadData(){
 
     if (!didInitialJump){
       didInitialJump = true;
-      const real = tripDayNumber();
+      const real = effectiveTripDay();
       if (real >= 1 && real <= DAY_COUNT) currentDay = real;
     }
 
@@ -419,8 +424,9 @@ async function loadData(){
 
 function renderNowNav(){
   const wrap = document.getElementById('nowNav');
-  const real = tripDayNumber();
-  if (real < 1 || real > DAY_COUNT){ wrap.innerHTML = ''; return; }
+  const realCal = tripDayNumber();
+  if (realCal < 1 || realCal > DAY_COUNT){ wrap.innerHTML = ''; return; }
+  const real = effectiveTripDay();
   wrap.innerHTML = `<div class="nownav"><button id="jumpNow">📍 回到目前行程（Day ${real}）</button></div>`;
   document.getElementById('jumpNow').addEventListener('click', () => {
     currentDay = real;
@@ -488,13 +494,16 @@ function renderList(){
   const listEl = document.getElementById('list');
   const items = itemsForDay(currentDay);
   if (!items.length){
-    listEl.innerHTML = `<div class="empty-state">這天還沒排行程，點右下角「＋」加入地點</div>`;
+    const msg = currentDay === 5
+      ? '回程班機已經併入 Day 4（10/24 深夜出發、10/25 凌晨落地），這天沒有另外安排行程。'
+      : '這天還沒排行程，點右下角「＋」加入地點';
+    listEl.innerHTML = `<div class="empty-state">${msg}</div>`;
     return;
   }
 
   // 只在「今天真的是這一天」時才判斷目前站/下一站
   let currentIdx = -1, nextIdx = -1;
-  if (tripDayNumber() === currentDay){
+  if (effectiveTripDay() === currentDay){
     const nowMin = kstMinutesNow();
     items.forEach((it, i) => {
       const t = timeToMinutes(it.arrival_time);
