@@ -82,13 +82,24 @@
   .navcta{ padding:0 16px 14px; }
   .navcta a{
     display:flex; align-items:center; justify-content:center; gap:8px;
-    width:100%; padding:13px; border-radius:14px; border:none;
-    background:linear-gradient(135deg, var(--ink) 0%, #33312E 100%);
-    color:#fff; font-weight:700; font-size:14px; text-decoration:none;
-    box-sizing:border-box; box-shadow:0 3px 10px rgba(28,27,26,.18);
-    transition:transform .12s ease;
+    width:100%; padding:13px; border-radius:16px;
+    background:linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(215,232,250,0.5) 100%);
+    -webkit-backdrop-filter:blur(14px) saturate(180%);
+    backdrop-filter:blur(14px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.75);
+    color:var(--ink); font-weight:700; font-size:14px; text-decoration:none;
+    box-sizing:border-box;
+    box-shadow:0 8px 22px rgba(0,82,164,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+    position:relative; overflow:hidden;
+    transition:transform .12s ease, box-shadow .12s ease;
   }
-  .navcta a:active{ transform:scale(.98); }
+  .navcta a::before{
+    content:''; position:absolute; inset:0; border-radius:16px;
+    background:linear-gradient(120deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 45%);
+    pointer-events:none;
+  }
+  .navcta a span{ position:relative; z-index:1; }
+  .navcta a:active{ transform:scale(.98); box-shadow:0 4px 12px rgba(0,82,164,0.1), inset 0 1px 0 rgba(255,255,255,0.9); }
 
   .leg{
     display:flex; align-items:center; justify-content:center;
@@ -104,7 +115,28 @@
     color:var(--ink-soft); display:flex; align-items:center; gap:5px;
     animation:fadeUp .3s ease both;
   }
+  .leg .pill .dur{ color:var(--ink-soft); font-weight:400; opacity:.75; }
   .leg .pill.empty{ font-weight:400; opacity:.6; }
+
+  .flightcard{
+    margin:4px 0 2px; border-radius:16px; padding:16px 18px;
+    background:#EAF1FA; border:1px solid #C9DDF2;
+    color:var(--ink);
+    animation:fadeUp .35s ease both;
+  }
+  .fc-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .fc-pt{ text-align:center; flex:1; min-width:0; }
+  .fc-time{ font-family:'Noto Serif TC',serif; font-size:26px; font-weight:900; line-height:1.15; color:var(--l1); }
+  .fc-place{
+    font-size:11px; color:var(--ink-soft); margin-top:3px; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .fc-mid{ flex:none; text-align:center; padding:0 8px; }
+  .fc-flightno{ font-size:10px; font-weight:700; margin-bottom:4px; white-space:nowrap; color:var(--ink-soft); }
+  .fc-durrow{ display:flex; align-items:center; justify-content:center; gap:5px; margin-bottom:4px; }
+  .fc-plane{ font-size:15px; }
+  .fc-duration{ font-size:13px; font-weight:700; color:var(--l1); white-space:nowrap; }
+  .fc-line{ width:52px; height:2px; background:var(--l1); opacity:.4; position:relative; }
 
   .empty-state{
     text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:13px;
@@ -141,12 +173,20 @@
   .list .item:nth-child(3){animation-delay:.1s} .list .item:nth-child(4){animation-delay:.14s}
   .list .item:nth-child(5){animation-delay:.18s} .list .item:nth-child(n+6){animation-delay:.22s}
   .item .stripe{ width:4px; border-radius:4px; flex:none; }
+  .item .timecol{
+    flex:none; width:56px; display:flex; flex-direction:column; align-items:center;
+    padding-top:2px; gap:6px;
+  }
+  .item .timecol .t{
+    font-family:'Noto Serif TC',serif; font-weight:900; font-size:18px; color:var(--ink);
+    line-height:1.15; text-align:center;
+  }
   .item .reorder{
-    display:flex; flex-direction:column; justify-content:center; gap:4px; flex:none;
+    display:flex; flex-direction:column; gap:4px; flex:none;
   }
   .item .reorder button{
-    width:26px; height:22px; border-radius:6px; border:1px solid var(--line); background:var(--paper);
-    color:var(--ink-soft); font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    width:24px; height:20px; border-radius:6px; border:1px solid var(--line); background:var(--paper);
+    color:var(--ink-soft); font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;
     transition:transform .1s ease, background .15s ease;
   }
   .item .reorder button:active{ transform:scale(.88); background:var(--card); }
@@ -439,7 +479,7 @@ function renderDayNav(){
   if (!url){ wrap.innerHTML = ''; return; }
   wrap.innerHTML = `
     <div class="navcta">
-      <a href="${url}" target="_blank" rel="noopener">🧭 開啟今天整條導航路線</a>
+      <a href="${url}" target="_blank" rel="noopener"><span>🧭 開啟今天整條導航路線</span></a>
     </div>
   `;
 }
@@ -472,12 +512,63 @@ function renderList(){
     const q = mapSearchQuery(p);
 
     if (idx > 0) {
-      const leg = document.createElement('div');
-      leg.className = 'leg';
-      leg.innerHTML = it.transport
-        ? `<span class="pill">🚉 ${it.transport}</span>`
-        : `<span class="pill empty">交通方式未填</span>`;
-      listEl.appendChild(leg);
+      const prevItem = items[idx - 1];
+      const transportText = it.transport || '';
+      const flightMatch = transportText.match(/([A-Z]{2}\d{3,4})/);
+      const isFlight = flightMatch && /班機/.test(transportText);
+
+      if (isFlight) {
+        const fromP = prevItem.places || {};
+        const depMatch = (prevItem.notes || '').match(/(\d{1,2}:\d{2})\s*起飛/);
+        const depTime = depMatch ? depMatch[1] : '';
+        const arrTime = it.arrival_time || '';
+
+        let durationLabel = '';
+        if (depTime && arrTime) {
+          const [dh, dm] = depTime.split(':').map(Number);
+          const [ah, am] = arrTime.split(':').map(Number);
+          let mins = (ah * 60 + am) - (dh * 60 + dm);
+          if (mins < 0) mins += 24 * 60; // 跨夜
+          const h = Math.floor(mins / 60), m = mins % 60;
+          durationLabel = h > 0 ? `${h}小時${m > 0 ? m + '分' : ''}` : `${m}分`;
+        }
+
+        const leg = document.createElement('div');
+        leg.className = 'flightcard';
+        leg.innerHTML = `
+          <div class="fc-row">
+            <div class="fc-pt">
+              ${depTime ? `<div class="fc-time">${depTime}</div>` : ''}
+              <div class="fc-place">${fromP.名稱 || ''}</div>
+            </div>
+            <div class="fc-mid">
+              <div class="fc-flightno">${flightMatch[1]}</div>
+              <div class="fc-durrow">
+                <span class="fc-plane">✈️</span>
+                ${durationLabel ? `<span class="fc-duration">${durationLabel}</span>` : ''}
+              </div>
+              <div class="fc-line"></div>
+            </div>
+            <div class="fc-pt">
+              ${arrTime ? `<div class="fc-time">${arrTime}</div>` : ''}
+              <div class="fc-place">${p.名稱 || ''}</div>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(leg);
+      } else {
+        const leg = document.createElement('div');
+        leg.className = 'leg';
+        if (it.transport) {
+          const parts = it.transport.split(/[｜|]/).map(s => s.trim()).filter(Boolean);
+          const method = parts[0] || '';
+          const dur = parts[1] || '';
+          leg.innerHTML = `<span class="pill">🚉 ${method}${dur ? `<span class="dur">｜${dur}</span>` : ''}</span>`;
+        } else {
+          leg.innerHTML = `<span class="pill empty">交通方式未填</span>`;
+        }
+        listEl.appendChild(leg);
+      }
     }
 
     const isCurrent = idx === currentIdx;
@@ -488,19 +579,19 @@ function renderList(){
     row.dataset.itinId = it.id;
     row.innerHTML = `
       <div class="stripe" style="background:${meta.color}"></div>
-      <div class="reorder">
-        <button class="up" ${idx === 0 ? 'disabled' : ''}>▲</button>
-        <button class="down" ${idx === items.length - 1 ? 'disabled' : ''}>▼</button>
+      <div class="timecol">
+        ${it.arrival_time ? `<div class="t">${it.arrival_time}</div>` : ''}
+        <div class="reorder">
+          <button class="up" ${idx === 0 ? 'disabled' : ''}>▲</button>
+          <button class="down" ${idx === items.length - 1 ? 'disabled' : ''}>▼</button>
+        </div>
       </div>
       <div class="item-body">
         <div class="item-top">
           <p class="name">${p.名稱 || '（地點已刪除）'}</p>
         </div>
         ${isCurrent || isNext ? `<div class="badge-row">${isCurrent ? `<span class="badge badge-current">目前行程</span>` : `<span class="badge badge-next">下一站</span>`}</div>` : ''}
-        <div class="item-meta">
-          ${it.arrival_time ? `<span>🕒 ${it.arrival_time}</span>` : ''}
-          ${it.duration ? `<span>⏱ 停留 ${it.duration}</span>` : ''}
-        </div>
+        ${it.duration ? `<div class="item-meta"><span>⏱ 停留 ${it.duration}</span></div>` : ''}
         ${it.notes ? `<div class="tip"><span class="ic">💡</span><span>${it.notes}</span></div>` : ''}
         <div class="item-actions">
           <button class="editBtn">編輯</button>
@@ -565,7 +656,7 @@ function openEdit(it, p, meta){
           </div>
           <div class="form-group">
             <label>交通方式（從上一站怎麼過來）</label>
-            <input id="e_transport" type="text" placeholder="例如：步行 10 分鐘 / 搭地鐵 2 號線" value="${it.transport || ''}">
+            <input id="e_transport" type="text" placeholder="例如：包車接送｜1小時 / 步行｜10分鐘" value="${it.transport || ''}">
           </div>
           <div class="form-group">
             <label>小提醒（會顯示成提示框）</label>
