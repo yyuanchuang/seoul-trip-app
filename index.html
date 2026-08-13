@@ -891,6 +891,43 @@
   var bounds = L.latLngBounds(REGIONS.map(function(r){ return [r.lat, r.lng]; }));
   bounds.extend([HOTEL.lat, HOTEL.lng]);
   map.fitBounds(bounds, { padding:[36,36] });
+
+  // 疊加已填好真實座標的地點（geo tag 欄位，陸續補資料會自動變準）
+  function catColor(cat){
+    if (!cat) return '#6B6560';
+    if (cat.indexOf('咖啡') > -1) return '#00A650';
+    if (cat.indexOf('購物') > -1) return '#00A5DE';
+    if (cat.indexOf('美食') > -1 || cat.indexOf('聖水洞') > -1) return '#FF7E00';
+    if (cat.indexOf('景點') > -1) return '#0052A4';
+    if (cat.indexOf('醫美') > -1) return '#A0498B';
+    return '#6B6560';
+  }
+  if (typeof supabase !== 'undefined') {
+    var sbMap = supabase.createClient(
+      'https://vmalwtagpcxvxocsopvi.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtYWx3dGFncGN4dnhvY3NvcHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4ODA1NTUsImV4cCI6MjEwMTQ1NjU1NX0.dXmudSH8rMmIYw3g0FgmcunBjsaAmyOULQLa9qWrR74'
+    );
+    sbMap.from('places').select('名稱,分類,"geo tag","地鐵站"').then(function(res){
+      if (res.error) { console.warn('地點座標讀取失敗', res.error); return; }
+      (res.data || []).forEach(function(p){
+        var geo = p['geo tag'];
+        if (!geo) return;
+        var parts = geo.split(',').map(Number);
+        if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return;
+        var color = catColor(p.分類);
+        var icon = L.divIcon({
+          className: 'pin-label',
+          html: '<div class="pin-dot" style="background:'+color+'; width:13px; height:13px;"></div>',
+          iconSize: [13, 13],
+          iconAnchor: [6.5, 6.5]
+        });
+        var popup = '<strong>'+p.名稱+'</strong>' + (p['地鐵站'] ? '<br>🚇 '+p['地鐵站'] : '');
+        L.marker([parts[0], parts[1]], { icon:icon, title:p.名稱 })
+         .addTo(map)
+         .bindPopup(popup);
+      });
+    });
+  }
 })();
 </script>
 
