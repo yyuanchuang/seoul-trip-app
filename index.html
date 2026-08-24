@@ -164,6 +164,24 @@
   .nv-del:active{ transform:scale(.97); }
   .nv-hint{ font-size:11.5px; color:var(--ink-soft); line-height:1.7; margin-bottom:12px; }
 
+  .fx-fab{
+    position:fixed; right:20px; bottom:24px; z-index:150;
+    width:56px; height:56px; border-radius:999px; border:none;
+    background:var(--ink); color:#fff; font-size:24px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(28,27,26,0.3); cursor:pointer;
+    transition:transform .15s cubic-bezier(.34,1.56,.64,1);
+  }
+  .fx-fab:active{ transform:scale(.88); }
+  .fx-calc-row{ display:flex; gap:6px; align-items:center; margin-bottom:8px; }
+  .fx-calc-row input{
+    flex:1; min-width:0; padding:11px 12px; border-radius:10px; border:1px solid var(--line);
+    font-size:16px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);
+    margin-bottom:0;
+  }
+  .fx-calc-row .cur{ font-size:12px; color:var(--ink-soft); flex:none; }
+  .fx-calc-row .eq{ flex:none; color:var(--ink-soft); }
+
   /* ---------- SECTION ---------- */
   .section{ padding:28px 16px 0; }
   .sec-head{ padding:0 4px 12px; }
@@ -820,16 +838,7 @@
 
       <div class="info" id="fxCard">
         <h3><span class="ic">💱</span>換匯</h3>
-        <div class="v" style="margin-bottom:8px;">
-          <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-            <input id="fxTwd" type="number" inputmode="decimal" placeholder="台幣" style="flex:1; min-width:0; padding:8px 10px; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);">
-            <span style="font-size:11.5px; color:var(--ink-soft); flex:none;">TWD</span>
-            <span style="flex:none; color:var(--ink-soft);">≈</span>
-            <input id="fxKrw" type="number" inputmode="decimal" placeholder="韓元" style="flex:1; min-width:0; padding:8px 10px; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);">
-            <span style="font-size:11.5px; color:var(--ink-soft); flex:none;">KRW</span>
-          </div>
-          <div id="fxRateNote" style="font-size:11px; color:var(--ink-soft);">匯率載入中…</div>
-        </div>
+        <div class="note" style="margin-bottom:10px; padding:8px 10px; background:var(--paper); border-radius:8px;">💡 想快速換算金額？點畫面右下角的 <b style="color:var(--ink);">💱</b> 按鈕，隨時隨地都能開。</div>
         <div class="row"><span class="lbl">明洞推薦</span><span class="val">大使館換錢所／大信換錢所</span></div>
         <div class="row"><span class="lbl">弘大推薦</span><span class="val">Moneybox（官網公告即時匯率）</span></div>
         <div class="note">明洞站 5 號出口步行約 5 分鐘一帶通常匯率最好；弘大（Moneybox／Travel depot）匯率略差一點但方便，就在住宿附近。帶大鈔（千元台幣、百元美金）匯率較佳；不用一次全換，每次約 2,000～3,000 元台幣的量，用完再換。日常刷卡（永豐幣倍卡 6%／台新 Richart 5.3%）通常比換現金划算，建議優先刷卡，現金留給小攤販跟應急用。</div>
@@ -856,6 +865,9 @@
     </div>
     <p class="colophon">2026.10.21 – 10.25　首爾　四大一小</p>
   </nav>
+
+  <button class="fx-fab" id="fxFabBtn" aria-label="開啟換匯小工具">💱</button>
+  <div id="fxModal"></div>
 
 </div>
 
@@ -1070,43 +1082,81 @@
 </script>
 
 <script>
-/* ---------- 換匯小工具 ---------- */
+/* ---------- 換匯小工具（右下角拉出式） ---------- */
 (function(){
-  var twdInput = document.getElementById('fxTwd');
-  var krwInput = document.getElementById('fxKrw');
-  var note = document.getElementById('fxRateNote');
-  if(!twdInput || !krwInput || !note) return;
-  var rate = 43.6; // 參考匯率，會被即時匯率覆蓋
-  var rateDate = '';
-  var live = false;
+  var fx = { rate: 43.6, rateDate: '', live: false, fetched: false };
 
-  function updateNote(){
-    note.textContent = (live ? '即時匯率' : '參考匯率（離線）') + '　1 TWD ≈ ' + rate.toFixed(2) + ' KRW' + (rateDate ? '　' + rateDate + ' 更新' : '');
+  function fetchRateOnce(){
+    if (fx.fetched) return;
+    fx.fetched = true;
+    fetch('https://api.frankfurter.dev/v2/rates')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var twd = data.find(function(d){ return d.quote === 'TWD'; });
+        var krw = data.find(function(d){ return d.quote === 'KRW'; });
+        if (twd && krw && twd.rate && krw.rate){
+          fx.rate = krw.rate / twd.rate;
+          fx.rateDate = twd.date;
+          fx.live = true;
+          var note = document.getElementById('fxRateNote');
+          if (note) updateNote(note);
+        }
+      })
+      .catch(function(){ /* 保留參考匯率 */ });
   }
-  updateNote();
 
-  twdInput.addEventListener('input', function(){
-    var v = parseFloat(twdInput.value);
-    krwInput.value = isNaN(v) ? '' : Math.round(v * rate);
-  });
-  krwInput.addEventListener('input', function(){
-    var v = parseFloat(krwInput.value);
-    twdInput.value = isNaN(v) ? '' : (v / rate).toFixed(0);
-  });
+  function updateNote(note){
+    note.textContent = (fx.live ? '即時匯率' : '參考匯率（離線）') + '　1 TWD ≈ ' + fx.rate.toFixed(2) + ' KRW' + (fx.rateDate ? '　' + fx.rateDate + ' 更新' : '');
+  }
 
-  fetch('https://api.frankfurter.dev/v2/rates')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var twd = data.find(function(d){ return d.quote === 'TWD'; });
-      var krw = data.find(function(d){ return d.quote === 'KRW'; });
-      if(twd && krw && twd.rate && krw.rate){
-        rate = krw.rate / twd.rate;
-        rateDate = twd.date;
-        live = true;
-        updateNote();
-      }
-    })
-    .catch(function(){ /* 保留參考匯率 */ });
+  function openFxSheet(){
+    var m = document.getElementById('fxModal');
+    m.innerHTML =
+      '<div class="nv-overlay"><div class="nv-sheet">' +
+        '<div class="nv-head"><h3>💱 換匯試算</h3><button class="nv-x" id="fxCloseBtn">✕</button></div>' +
+        '<div class="nv-body">' +
+          '<div class="fx-calc-row">' +
+            '<input id="fxTwd" type="number" inputmode="decimal" placeholder="台幣">' +
+            '<span class="cur">TWD</span><span class="eq">≈</span>' +
+            '<input id="fxKrw" type="number" inputmode="decimal" placeholder="韓元">' +
+            '<span class="cur">KRW</span>' +
+          '</div>' +
+          '<div id="fxRateNote" class="nv-hint" style="margin-bottom:4px;">匯率載入中…</div>' +
+        '</div>' +
+      '</div></div>';
+
+    var twdInput = document.getElementById('fxTwd');
+    var krwInput = document.getElementById('fxKrw');
+    var note = document.getElementById('fxRateNote');
+    updateNote(note);
+
+    twdInput.addEventListener('input', function(){
+      var v = parseFloat(twdInput.value);
+      krwInput.value = isNaN(v) ? '' : Math.round(v * fx.rate);
+    });
+    krwInput.addEventListener('input', function(){
+      var v = parseFloat(krwInput.value);
+      twdInput.value = isNaN(v) ? '' : (v / fx.rate).toFixed(0);
+    });
+
+    m.querySelector('.nv-overlay').addEventListener('click', function(ev){
+      if (ev.target.classList.contains('nv-overlay')) closeFxSheet();
+    });
+    m.querySelector('#fxCloseBtn').addEventListener('click', closeFxSheet);
+
+    twdInput.focus();
+    fetchRateOnce();
+  }
+
+  function closeFxSheet(){
+    document.getElementById('fxModal').innerHTML = '';
+  }
+
+  var fab = document.getElementById('fxFabBtn');
+  if (fab) fab.addEventListener('click', openFxSheet);
+
+  // 首頁載入時就先預抓一次匯率，打開小工具時不用等
+  fetchRateOnce();
 })();
 </script>
 
