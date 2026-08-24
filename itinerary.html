@@ -101,6 +101,19 @@
   .navcta a span{ position:relative; z-index:1; }
   .navcta a:active{ transform:scale(.98); box-shadow:0 4px 12px rgba(0,82,164,0.1), inset 0 1px 0 rgba(255,255,255,0.9); }
 
+  .navtip{
+    margin:0 16px 14px; padding:12px 14px; border-radius:16px;
+    background:linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(215,232,250,0.5) 100%);
+    -webkit-backdrop-filter:blur(14px) saturate(180%);
+    backdrop-filter:blur(14px) saturate(180%);
+    border:1px solid rgba(255,255,255,0.75);
+    color:var(--ink-soft); font-size:12.5px; line-height:1.5;
+    display:flex; gap:8px; align-items:flex-start;
+    box-shadow:0 8px 22px rgba(0,82,164,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+    box-sizing:border-box;
+  }
+  .navtip .ic{ flex:none; font-size:14px; }
+
   .leg{
     display:flex; align-items:center; justify-content:center;
     position:relative; min-height:30px; padding:2px 0;
@@ -464,28 +477,14 @@ function itemsForDay(d){
   return itinerary.filter(i => i.day === d).sort((a,b) => a.sort_order - b.sort_order);
 }
 
-function buildDayRouteUrl(items){
-  const stops = items
-    .map(it => it.places || {})
-    .filter(p => p.名稱)
-    .map(p => mapSearchQuery(p));
-  if (stops.length < 2) return null;
-  const origin = stops[0];
-  const destination = stops[stops.length - 1];
-  const waypoints = stops.slice(1, -1);
-  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
-  if (waypoints.length) url += `&waypoints=${waypoints.join('|')}`;
-  return url;
-}
-
 function renderDayNav(){
   const wrap = document.getElementById('dayNav');
   const items = itemsForDay(currentDay);
-  const url = buildDayRouteUrl(items);
-  if (!url){ wrap.innerHTML = ''; return; }
+  if (items.length < 2){ wrap.innerHTML = ''; return; }
   wrap.innerHTML = `
-    <div class="navcta">
-      <a href="${url}" target="_blank" rel="noopener"><span>🧭 開啟今天整條導航路線</span></a>
+    <div class="navtip">
+      <span class="ic">💡</span>
+      <span>Google 地圖在韓國境內無法規劃跨點導航路線，這是韓國政府的地圖資料限制，非本 App 問題。請改用每一站下方的「Naver地圖」按鈕分段定位，或直接開 Naver Map／Kakao Map App 搜尋轉乘路線最準確。</span>
     </div>
   `;
 }
