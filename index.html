@@ -818,6 +818,23 @@
         <div class="note">韓國店家普遍可刷卡，Visa 與 Mastercard 都通用。以上為出發時仍在效期內的回饋，條件與額度常有變動，出發前請到銀行官網確認。傳統市場與小攤仍建議帶些現金。</div>
       </div>
 
+      <div class="info" id="fxCard">
+        <h3><span class="ic">💱</span>換匯</h3>
+        <div class="v" style="margin-bottom:8px;">
+          <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+            <input id="fxTwd" type="number" inputmode="decimal" placeholder="台幣" style="flex:1; min-width:0; padding:8px 10px; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);">
+            <span style="font-size:11.5px; color:var(--ink-soft); flex:none;">TWD</span>
+            <span style="flex:none; color:var(--ink-soft);">≈</span>
+            <input id="fxKrw" type="number" inputmode="decimal" placeholder="韓元" style="flex:1; min-width:0; padding:8px 10px; border-radius:8px; border:1px solid var(--line); font-size:14px; font-family:'Noto Sans TC',sans-serif; background:#fff; color:var(--ink);">
+            <span style="font-size:11.5px; color:var(--ink-soft); flex:none;">KRW</span>
+          </div>
+          <div id="fxRateNote" style="font-size:11px; color:var(--ink-soft);">匯率載入中…</div>
+        </div>
+        <div class="row"><span class="lbl">明洞推薦</span><span class="val">大使館換錢所／大信換錢所</span></div>
+        <div class="row"><span class="lbl">弘大推薦</span><span class="val">Moneybox（官網公告即時匯率）</span></div>
+        <div class="note">明洞站 5 號出口步行約 5 分鐘一帶通常匯率最好；弘大（Moneybox／Travel depot）匯率略差一點但方便，就在住宿附近。帶大鈔（千元台幣、百元美金）匯率較佳；不用一次全換，每次約 2,000～3,000 元台幣的量，用完再換。日常刷卡（永豐幣倍卡 6%／台新 Richart 5.3%）通常比換現金划算，建議優先刷卡，現金留給小攤販跟應急用。</div>
+      </div>
+
       <div class="info">
         <h3><span class="ic">🆘</span>緊急聯絡</h3>
         <div class="row"><span class="lbl">報警</span><span class="val tel">112</span></div>
@@ -1049,6 +1066,47 @@
   }
 
   load();
+})();
+</script>
+
+<script>
+/* ---------- 換匯小工具 ---------- */
+(function(){
+  var twdInput = document.getElementById('fxTwd');
+  var krwInput = document.getElementById('fxKrw');
+  var note = document.getElementById('fxRateNote');
+  if(!twdInput || !krwInput || !note) return;
+  var rate = 43.6; // 參考匯率，會被即時匯率覆蓋
+  var rateDate = '';
+  var live = false;
+
+  function updateNote(){
+    note.textContent = (live ? '即時匯率' : '參考匯率（離線）') + '　1 TWD ≈ ' + rate.toFixed(2) + ' KRW' + (rateDate ? '　' + rateDate + ' 更新' : '');
+  }
+  updateNote();
+
+  twdInput.addEventListener('input', function(){
+    var v = parseFloat(twdInput.value);
+    krwInput.value = isNaN(v) ? '' : Math.round(v * rate);
+  });
+  krwInput.addEventListener('input', function(){
+    var v = parseFloat(krwInput.value);
+    twdInput.value = isNaN(v) ? '' : (v / rate).toFixed(0);
+  });
+
+  fetch('https://api.frankfurter.dev/v2/rates')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var twd = data.find(function(d){ return d.quote === 'TWD'; });
+      var krw = data.find(function(d){ return d.quote === 'KRW'; });
+      if(twd && krw && twd.rate && krw.rate){
+        rate = krw.rate / twd.rate;
+        rateDate = twd.date;
+        live = true;
+        updateNote();
+      }
+    })
+    .catch(function(){ /* 保留參考匯率 */ });
 })();
 </script>
 
