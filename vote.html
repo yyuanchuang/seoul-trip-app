@@ -230,6 +230,26 @@
     cursor:pointer; transition:transform .12s ease;
   }
   .detail-actions a:active, .detail-actions button:active{ transform:scale(.96); }
+
+  .photo-section{ margin-bottom:16px; }
+  .photo-strip{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; -webkit-overflow-scrolling:touch; }
+  .photo-thumb{
+    flex:none; width:72px; height:72px; border-radius:12px; overflow:hidden;
+    display:block; border:1px solid var(--line); background:var(--paper);
+  }
+  .photo-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .photo-add-btn{
+    flex:none; width:72px; height:72px; border-radius:12px; border:1.5px dashed var(--line);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    color:var(--ink-soft); font-size:10.5px; cursor:pointer; background:var(--card);
+    transition:opacity .15s ease;
+  }
+  .photo-add-btn span.ic{ font-size:20px; }
+  .photo-add-btn.uploading{ opacity:.5; pointer-events:none; }
+  .photo-count-tag{
+    display:inline-flex; align-items:center; gap:3px; font-size:11px; color:var(--ink-soft);
+    margin-left:6px;
+  }
   .detail-like{
     display:flex; align-items:center; justify-content:center; gap:8px;
     padding:12px; border-radius:12px; border:none; width:100%;
@@ -364,6 +384,7 @@ const CATEGORY_ORDER = ['咖啡','美食','購物','景點','醫美'];
 let voterName = localStorage.getItem('voter_name') || '';
 let places = [];
 let votes = [];
+let photos = [];
 let openCategories = new Set(); // 記住哪些分類是展開的
 
 function heartPath(){
@@ -373,18 +394,80 @@ function heartPath(){
 async function loadData(){
   const app = document.getElementById('app');
   try {
-    const [{ data: placesData, error: pErr }, { data: votesData, error: vErr }] = await Promise.all([
+    const [{ data: placesData, error: pErr }, { data: votesData, error: vErr }, { data: photosData, error: phErr }] = await Promise.all([
       sb.from('places').select('*'),
       sb.from('votes').select('*'),
+      sb.from('place_photos').select('*').order('created_at', { ascending: true }),
     ]);
     if (pErr) throw pErr;
     if (vErr) throw vErr;
+    if (phErr) throw phErr;
     places = placesData || [];
     votes = votesData || [];
+    photos = photosData || [];
     render();
   } catch (e) {
     console.error(e);
     app.innerHTML = `<div class="error">資料載入失敗，請檢查網路連線或稍後再試。<br><small>${e.message || ''}</small></div>`;
+  }
+}
+
+function photosFor(placeId){
+  return photos.filter(ph => ph.place_id === placeId);
+}
+
+function compressImage(file, maxDim, quality){
+  maxDim = maxDim || 1600;
+  quality = quality || 0.82;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let width = img.width, height = img.height;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        if (blob) resolve(blob); else reject(new Error('圖片壓縮失敗'));
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('圖片讀取失敗')); };
+    img.src = url;
+  });
+}
+
+async function uploadPhotoForPlace(placeId, file, btnEl){
+  if (!voterName) { showNameOverlay(); return; }
+  if (!file) return;
+  if (!file.type || !file.type.startsWith('image/')) { alert('請選擇圖片檔案'); return; }
+
+  if (btnEl) btnEl.classList.add('uploading');
+  try {
+    const blob = await compressImage(file);
+    const path = `${placeId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+    const { error: upErr } = await sb.storage.from('place-photos').upload(path, blob, { contentType: 'image/jpeg' });
+    if (upErr) throw upErr;
+    const { data: pub } = sb.storage.from('place-photos').getPublicUrl(path);
+    const { error: insErr } = await sb.from('place_photos').insert({
+      place_id: placeId, url: pub.publicUrl, uploaded_by: voterName
+    });
+    if (insErr) throw insErr;
+    await loadData();
+    const freshPlace = places.find(x => x.id === placeId);
+    if (freshPlace) {
+      const cat = CATEGORY_ALIAS[freshPlace.分類] || freshPlace.分類;
+      openDetail(freshPlace, CATEGORY_META[cat]);
+    }
+  } catch (e) {
+    console.error(e);
+    alert('照片上傳失敗，請再試一次');
+    if (btnEl) btnEl.classList.remove('uploading');
   }
 }
 
@@ -460,6 +543,7 @@ function render(){
           ${p.地區
             ? `<span class="tag" style="background:${meta.color}">${p.地區}</span>`
             : `<span class="tag empty">地區待補</span>`}
+          ${photosFor(p.id).length ? `<span class="photo-count-tag">📷 ${photosFor(p.id).length}</span>` : ''}
         </div>
         <button class="like-btn ${liked ? 'liked' : ''}">
           <svg viewBox="0 0 24 24" fill="${liked ? meta.color : 'none'}" stroke="${liked ? meta.color : 'var(--ink-soft)'}" stroke-width="1.6">
@@ -510,6 +594,19 @@ function openDetail(p, meta){
         </div>
         <div class="detail-body">
           ${p.介紹 ? `<p class="intro">${p.介紹}</p>` : ''}
+          <div class="photo-section">
+            <div class="photo-strip" id="photoStrip">
+              ${photosFor(p.id).map(ph => `
+                <a href="${ph.url}" target="_blank" rel="noopener" class="photo-thumb">
+                  <img src="${ph.url}" loading="lazy" alt="">
+                </a>
+              `).join('')}
+              <label class="photo-add-btn" id="photoAddBtn">
+                <input type="file" accept="image/*" id="photoFileInput" style="display:none">
+                <span class="ic">📷</span><span>新增照片</span>
+              </label>
+            </div>
+          </div>
           <div class="detail-meta">${rows.join('')}</div>
           <div class="detail-actions">
             ${p.來源連結 ? `<a href="${p.來源連結}" target="_blank" rel="noopener">📷 看貼文</a>` : ''}
@@ -534,6 +631,12 @@ function openDetail(p, meta){
     await toggleVote(p.id, e.currentTarget);
     const freshPlace = places.find(x => x.id === p.id) || p;
     openDetail(freshPlace, meta);
+  });
+  overlay.querySelector('#photoFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    const btnEl = overlay.querySelector('#photoAddBtn');
+    uploadPhotoForPlace(p.id, file, btnEl);
+    e.target.value = '';
   });
 }
 
