@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>首爾行程投票</title>
+<title>候選地點清單</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -139,18 +139,11 @@
   }
   .tag.empty{ background:var(--line); color:var(--ink-soft); }
 
-  .like-btn{
-    flex:none; display:flex; flex-direction:column; align-items:center; gap:2px;
-    background:none; border:none; cursor:pointer; padding:6px 4px;
-    -webkit-tap-highlight-color:transparent;
+  .scheduled-tag{
+    flex:none; align-self:center; font-size:10.5px; font-weight:700; color:var(--l2);
+    background:#E8F6EE; border:1px solid #C8E9D5; border-radius:999px; padding:4px 9px;
+    white-space:nowrap; margin-left:6px;
   }
-  .like-btn svg{ width:22px; height:22px; transition:transform 0.15s ease; }
-  .like-btn.liked svg{ animation:heartPop .32s cubic-bezier(.34,1.56,.64,1) both; }
-  .like-btn{ transition:transform .12s ease; }
-  .like-btn:active{ transform:scale(.88); }
-  .like-btn .count{ font-size:11px; font-weight:700; color:var(--ink-soft); }
-  .like-btn.liked .count{ color:var(--ink); }
-  .like-btn:disabled{ opacity:0.4; }
 
   footer{ text-align:center; font-size:11px; color:var(--ink-soft); padding:28px 20px 0; }
 
@@ -326,7 +319,7 @@
 </script>
 <nav class="topnav">
   <a href="index.html">手冊</a>
-  <a href="vote.html" class="active">投票</a>
+  <a href="vote.html" class="active">候選</a>
   <a href="itinerary.html">行程</a>
   <a href="expenses.html">花費</a>
   <a href="todo.html">待辦</a>
@@ -336,8 +329,8 @@
   <div class="row">
     <div>
       <div class="eyebrow">2026.10.21 – 10.25</div>
-      <h1>首爾行程投票</h1>
-      <p>點愛心投給你想去的地方</p>
+      <h1>候選地點清單</h1>
+      <p>大行程已經排定，這裡留著備用，見縫插針時來翻</p>
     </div>
     <div class="whoami" id="whoami">...</div>
   </div>
@@ -345,7 +338,7 @@
 
 <div id="app"><div class="loading">載入中...</div></div>
 
-<footer>投票即時同步給全家人 · 資料存於雲端資料庫</footer>
+<footer>行程已排定，這裡是備用候選清單 · 資料存於雲端資料庫</footer>
 
 <div id="nameOverlay" class="overlay" style="display:none;">
   <div class="box">
@@ -383,27 +376,23 @@ const CATEGORY_ORDER = ['咖啡','美食','購物','景點','醫美'];
 
 let voterName = localStorage.getItem('voter_name') || '';
 let places = [];
-let votes = [];
+let scheduledIds = new Set();
 let photos = [];
 let openCategories = new Set(); // 記住哪些分類是展開的
-
-function heartPath(){
-  return 'M12 21s-6.5-4.35-9.3-8.28C.6 9.9 1.4 6.4 4.4 5.1c2-.86 4.1-.2 5.4 1.4C11 4.9 13.1 4.24 15.1 5.1c3 1.3 3.8 4.8 1.7 7.62C18.5 16.65 12 21 12 21z';
-}
 
 async function loadData(){
   const app = document.getElementById('app');
   try {
-    const [{ data: placesData, error: pErr }, { data: votesData, error: vErr }, { data: photosData, error: phErr }] = await Promise.all([
+    const [{ data: placesData, error: pErr }, { data: itinData, error: iErr }, { data: photosData, error: phErr }] = await Promise.all([
       sb.from('places').select('*'),
-      sb.from('votes').select('*'),
+      sb.from('itinerary').select('place_id'),
       sb.from('place_photos').select('*').order('created_at', { ascending: true }),
     ]);
     if (pErr) throw pErr;
-    if (vErr) throw vErr;
+    if (iErr) throw iErr;
     if (phErr) throw phErr;
     places = placesData || [];
-    votes = votesData || [];
+    scheduledIds = new Set((itinData || []).map(x => x.place_id));
     photos = photosData || [];
     render();
   } catch (e) {
@@ -471,33 +460,6 @@ async function uploadPhotoForPlace(placeId, file, btnEl){
   }
 }
 
-function countFor(placeId){
-  return votes.filter(v => v.place_id === placeId).length;
-}
-function hasVoted(placeId){
-  return votes.some(v => v.place_id === placeId && v.voter_name === voterName);
-}
-
-async function toggleVote(placeId, btn){
-  btn.disabled = true;
-  const already = hasVoted(placeId);
-  try {
-    if (already) {
-      const { error } = await sb.from('votes').delete()
-        .eq('place_id', placeId).eq('voter_name', voterName);
-      if (error) throw error;
-    } else {
-      const { error } = await sb.from('votes').insert({ place_id: placeId, voter_name: voterName });
-      if (error) throw error;
-    }
-    await loadData();
-  } catch (e) {
-    console.error(e);
-    alert('投票失敗，請再試一次');
-    btn.disabled = false;
-  }
-}
-
 function render(){
   const app = document.getElementById('app');
   app.innerHTML = '';
@@ -531,8 +493,7 @@ function render(){
     });
 
     items.forEach(p => {
-      const liked = hasVoted(p.id);
-      const count = countFor(p.id);
+      const scheduled = scheduledIds.has(p.id);
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
@@ -545,17 +506,8 @@ function render(){
             : `<span class="tag empty">地區待補</span>`}
           ${photosFor(p.id).length ? `<span class="photo-count-tag">📷 ${photosFor(p.id).length}</span>` : ''}
         </div>
-        <button class="like-btn ${liked ? 'liked' : ''}">
-          <svg viewBox="0 0 24 24" fill="${liked ? meta.color : 'none'}" stroke="${liked ? meta.color : 'var(--ink-soft)'}" stroke-width="1.6">
-            <path d="${heartPath()}"/>
-          </svg>
-          <span class="count">${count}</span>
-        </button>
+        ${scheduled ? `<span class="scheduled-tag">✓ 已排入行程</span>` : ''}
       `;
-      card.querySelector('.like-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleVote(p.id, e.currentTarget);
-      });
       card.addEventListener('click', () => openDetail(p, meta));
       cardsWrap.appendChild(card);
     });
@@ -569,8 +521,6 @@ function mapSearchQuery(p){
 }
 
 function openDetail(p, meta){
-  const liked = hasVoted(p.id);
-  const count = countFor(p.id);
   const q = mapSearchQuery(p);
 
   const rows = [];
@@ -613,12 +563,6 @@ function openDetail(p, meta){
             <a href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">🗺️ Google 地圖</a>
             <a href="https://map.naver.com/v5/search/${q}" target="_blank" rel="noopener">🗺️ Naver 地圖</a>
           </div>
-          <button class="detail-like" id="detailLikeBtn">
-            <svg viewBox="0 0 24 24" fill="${liked ? meta.color : 'none'}" stroke="${liked ? meta.color : 'var(--ink-soft)'}" stroke-width="1.6">
-              <path d="${heartPath()}"/>
-            </svg>
-            <span>${liked ? '已投票' : '投給這裡'}（${count}）</span>
-          </button>
         </div>
       </div>
     </div>
@@ -627,11 +571,6 @@ function openDetail(p, meta){
     if (e.target.classList.contains('detail-overlay')) closeDetail();
   });
   overlay.querySelector('.detail-close').addEventListener('click', closeDetail);
-  overlay.querySelector('#detailLikeBtn').addEventListener('click', async (e) => {
-    await toggleVote(p.id, e.currentTarget);
-    const freshPlace = places.find(x => x.id === p.id) || p;
-    openDetail(freshPlace, meta);
-  });
   overlay.querySelector('#photoFileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     const btnEl = overlay.querySelector('#photoAddBtn');
@@ -765,7 +704,6 @@ document.getElementById('fabAdd').addEventListener('click', openAddForm);
 
 // 啟動
 updateWhoami();
-if (!voterName) showNameOverlay();
 loadData();
 </script>
 
